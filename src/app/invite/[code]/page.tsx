@@ -23,7 +23,7 @@ export default async function InvitePage({ params }: PageProps<"/invite/[code]">
       <p className="text-sm text-dim">Приглашение</p>
 
       <div>
-        <h1 className="text-[40px] font-bold leading-none tracking-tight">brbs mafia</h1>
+        <h1 className="text-[clamp(52px,14vw,72px)] leading-[0.9] font-extrabold tracking-[-0.05em]">brbs mafia</h1>
         <p className="mt-3 text-[15px] text-dim">
           {valid ? `Общее расписание и игры${count ? ` для ${count + 1} человек` : ""}` : "Ссылка устарела или неверная. Попроси новую у друзей."}
         </p>

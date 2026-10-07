@@ -33,7 +33,7 @@ export function Avatar({ id, name, url, size = 28, ring, className = "" }: Props
 export function AvatarStack({
   people,
   size = 22,
-  ring = "#000",
+  ring = "var(--color-ink)",
   max = 6,
 }: {
   people: { id: string; name: string; avatar_url: string | null }[];
@@ -46,12 +46,12 @@ export function AvatarStack({
   return (
     <div className="flex items-center">
       {shown.map((p, i) => (
-        <Avatar key={p.id} id={p.id} name={p.name} url={p.avatar_url} size={size} ring={ring} className={i ? "-ml-1.5" : ""} />
+        <Avatar key={p.id} id={p.id} name={p.name} url={p.avatar_url} size={size} ring={ring} className={`anim-pop ${i ? "-ml-1.5" : ""}`} />
       ))}
       {rest > 0 && (
         <span
           style={{ width: size, height: size, boxShadow: `0 0 0 2px ${ring}`, fontSize: size * 0.4 }}
-          className="-ml-1.5 inline-flex items-center justify-center rounded-full bg-elev text-dim"
+          className="-ml-1.5 inline-flex items-center justify-center rounded-full bg-[#2a2a30] text-dim"
         >
           +{rest}
         </span>

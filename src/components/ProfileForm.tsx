@@ -62,10 +62,10 @@ export function ProfileForm({ id, name: initialName, avatarUrl, submitLabel, red
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <button onClick={() => fileInput.current?.click()} className="relative shrink-0" aria-label="Сменить аватарку">
+        <button onClick={() => fileInput.current?.click()} className="relative shrink-0 transition hover:scale-105" aria-label="Сменить аватарку">
           <Avatar id={id} name={name || "?"} url={avatar} size={72} />
-          <span className="absolute -right-0.5 -bottom-0.5 flex size-6 items-center justify-center rounded-full bg-accent ring-[3px] ring-bg">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" aria-hidden="true">
+          <span className="absolute -right-0.5 -bottom-0.5 flex size-6 items-center justify-center rounded-full bg-fg text-ink ring-[3px] ring-ink">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" aria-hidden="true">
               <path d="M12 5v14M5 12h14" />
             </svg>
           </span>
@@ -80,9 +80,9 @@ export function ProfileForm({ id, name: initialName, avatarUrl, submitLabel, red
             }}
             maxLength={32}
             placeholder="Ник"
-            className="w-full rounded-xl bg-card px-4 py-3 text-[16px] outline-none focus:ring-2 focus:ring-accent"
+            className="w-full rounded-full bg-glass px-5 py-3.5 text-[17px] outline-none focus:bg-glass2"
           />
-          <p className="mt-2 text-sm text-dim">{uploading ? "Загружаем аватарку…" : now ? `Местное время ${now}` : " "}</p>
+          <p className="mt-2 px-1 text-sm text-dim">{uploading ? "Загружаем аватарку…" : now ? `Местное время ${now}` : " "}</p>
         </div>
       </div>
 
@@ -91,7 +91,7 @@ export function ProfileForm({ id, name: initialName, avatarUrl, submitLabel, red
       <button
         onClick={submit}
         disabled={pending || uploading}
-        className="w-full rounded-2xl bg-accent py-3.5 text-[16px] font-semibold text-white disabled:opacity-50"
+        className="w-full rounded-full bg-fg py-3.5 text-[16px] font-semibold text-ink transition active:scale-[0.98] disabled:opacity-50"
       >
         {pending ? "Сохраняем…" : submitLabel}
       </button>

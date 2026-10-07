@@ -1,9 +1,11 @@
-const CDN = "https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps";
+const CDN = "https://shared.steamstatic.com/store_item_assets/steam/apps";
 
-export function steamCovers(appid: number) {
+export function steamArt(appid: number) {
   return {
     portrait: `${CDN}/${appid}/library_600x900.jpg`,
     header: `${CDN}/${appid}/header.jpg`,
+    hero: `${CDN}/${appid}/library_hero.jpg`,
+    logo: `${CDN}/${appid}/logo.png`,
   };
 }
 

@@ -6,9 +6,10 @@ import type { DayEntry, Game, Member, Want } from "./types";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
-export const WANT_TTL_HOURS = 24;
-export const MAX_WANTS = 3;
-export const MAX_DAY_GAMES = 5;
+import { WANT_TTL_HOURS } from "./limits";
+import { addDays, gamingDay } from "./time";
+import type { CrewData } from "./views";
+export { WANT_TTL_HOURS, MAX_WANTS, MAX_DAY_GAMES } from "./limits";
 
 // cache: за один запрос страницы пользователь проверяется один раз.
 export const getViewer = cache(async () => {
@@ -71,4 +72,20 @@ export async function loadRecentGameIds(supabase: Supabase, userId: string): Pro
     .order("used_at", { ascending: false })
     .limit(12);
   return (data ?? []).map((r) => r.game_id as number);
+}
+
+/** Всё, что нужно экранам, одним заходом: для недели вперёд и дня назад. */
+export async function loadCrewData(viewer: Awaited<ReturnType<typeof requireMember>>, from?: string, to?: string): Promise<CrewData> {
+  const { supabase, profile: me } = viewer;
+  const now = new Date();
+  const today = gamingDay(now, me.timezone);
+  const [members, entries, games, wants, recentIds] = await Promise.all([
+    loadMembers(supabase),
+    loadEntries(supabase, from ?? addDays(today, -1), to ?? addDays(today, 7)),
+    loadGames(supabase),
+    loadActiveWants(supabase),
+    loadRecentGameIds(supabase, me.id),
+  ]);
+  const recent = recentIds.map((id) => games.find((g) => g.id === id)).filter((g): g is Game => !!g);
+  return { me, members, entries, games, wants, recent, now, today };
 }

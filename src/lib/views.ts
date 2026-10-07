@@ -1,0 +1,170 @@
+// Из сырых данных — то, что показывают экраны. Без обращения к базе,
+// поэтому этим же пользуется страница предпросмотра с выдуманными данными.
+import { dayStats, entryFor } from "./overlap";
+import { silentJoke } from "./jokes";
+import { addDays, dateLong, DAY_HOURS, dayNumber, formatTime, hourStart, weekdayLong, weekdayShort } from "./time";
+import type { DayEntry, Game, Member, Want } from "./types";
+
+export type CrewData = {
+  me: Member;
+  members: Member[];
+  entries: DayEntry[];
+  games: Game[];
+  wants: Want[];
+  recent: Game[];
+  now: Date;
+  today: string;
+};
+
+export type Spotlight = {
+  game: Game | null;
+  day: string;
+  when: string | null; // «Сегодня, 21:00 – 23:00»
+  people: Member[];
+  freeCount: number;
+};
+
+export type EditorSeed = {
+  day: string;
+  hourLabels: string[];
+  initialHours: number[];
+  initialGames: number[];
+  busy: boolean;
+};
+
+function dayName(day: string, today: string) {
+  if (day === today) return "Сегодня";
+  if (day === addDays(today, 1)) return "Завтра";
+  return weekdayLong(day);
+}
+
+function hourLabels(day: string, tz: string) {
+  return Array.from({ length: DAY_HOURS + 1 }, (_, i) => formatTime(hourStart(day, i, tz), tz));
+}
+
+/** Самая популярная игра среди людей (по выбору на день, затем по статусам). */
+function leadingGame(data: CrewData, day: string, peopleIds: string[]): Game | null {
+  const score = new Map<number, number>();
+  for (const id of peopleIds) {
+    entryFor(data.entries, id, day)?.game_ids.forEach((g) => score.set(g, (score.get(g) ?? 0) + 2));
+  }
+  for (const w of data.wants) {
+    if (!peopleIds.length || peopleIds.includes(w.user_id)) score.set(w.game_id, (score.get(w.game_id) ?? 0) + 1);
+  }
+  const best = [...score.entries()].sort((a, b) => b[1] - a[1])[0];
+  return data.games.find((g) => g.id === best?.[0]) ?? null;
+}
+
+export function editorSeed(data: CrewData, day: string): EditorSeed {
+  const tz = data.me.timezone;
+  const { freeHours } = dayStats(day, tz, [data.me], data.entries);
+  const mine = entryFor(data.entries, data.me.id, day);
+  return {
+    day,
+    hourLabels: hourLabels(day, tz),
+    initialHours: freeHours.get(data.me.id) ?? [],
+    initialGames: mine?.game_ids ?? [],
+    busy: mine?.status === "busy",
+  };
+}
+
+export function buildHome(data: CrewData) {
+  const tz = data.me.timezone;
+  const week = Array.from({ length: 7 }, (_, i) => addDays(data.today, i));
+  const days = week.map((day) => ({ day, ...dayStats(day, tz, data.members, data.entries) }));
+
+  // Прожектор: ближайший день, где кто-то совпал; иначе — что хотят прямо сейчас.
+  const lit = days.find((d) => d.best);
+  let spotlight: Spotlight;
+  if (lit?.best) {
+    const inWindow = data.members.filter((m) => (lit.freeHours.get(m.id) ?? []).includes(lit.best!.from));
+    spotlight = {
+      game: leadingGame(data, lit.day, inWindow.map((m) => m.id)),
+      day: lit.day,
+      when: `${dayName(lit.day, data.today)}, ${formatTime(hourStart(lit.day, lit.best.from, tz), tz)} – ${formatTime(
+        hourStart(lit.day, lit.best.to, tz),
+        tz,
+      )}`,
+      people: inWindow,
+      freeCount: lit.best.count,
+    };
+  } else {
+    const game = leadingGame(data, data.today, []) ?? data.games[data.games.length - 1] ?? null;
+    spotlight = {
+      game,
+      day: data.today,
+      when: null,
+      people: game ? data.members.filter((m) => data.wants.some((w) => w.user_id === m.id && w.game_id === game.id)) : [],
+      freeCount: 0,
+    };
+  }
+
+  return {
+    spotlight,
+    total: data.members.length,
+    week: days.map((d) => ({
+      day: d.day,
+      weekday: weekdayShort(d.day),
+      num: dayNumber(d.day),
+      counts: d.counts,
+      peak: Math.max(...d.counts),
+      isToday: d.day === data.today,
+      mine: entryFor(data.entries, data.me.id, d.day)?.status ?? null,
+    })),
+    statuses: data.members
+      .map((m) => ({
+        member: m,
+        games: data.wants
+          .filter((w) => w.user_id === m.id)
+          .sort((a, b) => a.created_at.localeCompare(b.created_at))
+          .map((w) => data.games.find((g) => g.id === w.game_id))
+          .filter((g): g is Game => !!g),
+      }))
+      .sort(
+        (a, b) =>
+          Number(b.member.id === data.me.id) - Number(a.member.id === data.me.id) || b.games.length - a.games.length,
+      ),
+    today: editorSeed(data, data.today),
+  };
+}
+
+export type HomeModel = ReturnType<typeof buildHome>;
+
+export function buildDay(data: CrewData, day: string) {
+  const tz = data.me.timezone;
+  const { freeHours, best } = dayStats(day, tz, data.members, data.entries);
+  const order = { free: 0, busy: 1, silent: 2 } as const;
+
+  const rows = data.members
+    .map((m) => {
+      const entry = entryFor(data.entries, m.id, day);
+      const hours = freeHours.get(m.id) ?? [];
+      const state: keyof typeof order = hours.length ? "free" : entry?.status === "busy" ? "busy" : "silent";
+      return { member: m, hours, state, note: state === "silent" ? silentJoke(m.id, day) : null };
+    })
+    .sort((a, b) => order[a.state] - order[b.state]);
+
+  const dayGames = data.games
+    .map((g) => ({
+      game: g,
+      people: data.members.filter((m) => entryFor(data.entries, m.id, day)?.game_ids.includes(g.id)),
+    }))
+    .filter((x) => x.people.length)
+    .sort((a, b) => b.people.length - a.people.length);
+
+  const editor = editorSeed(data, day);
+  return {
+    day,
+    title: dayName(day, data.today),
+    date: `${weekdayLong(day)}, ${dateLong(day)}`,
+    hourLabels: editor.hourLabels,
+    best,
+    total: data.members.length,
+    rows,
+    dayGames,
+    spotlightGame: dayGames[0]?.game ?? null,
+    editor,
+  };
+}
+
+export type DayModel = ReturnType<typeof buildDay>;

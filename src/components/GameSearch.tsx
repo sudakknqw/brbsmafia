@@ -2,17 +2,15 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { addGame } from "@/app/actions";
-import { steamCovers } from "@/lib/steam";
-import type { Game } from "@/lib/types";
-import { GameCover } from "./GameCover";
+import { steamArt } from "@/lib/steam";
 
 type Result = { appid: number; name: string };
 
 /**
- * Поиск игры в Steam + недавние. Найденная игра добавляется на общую полку
+ * Поиск игры в Steam. Найденная игра добавляется в общую библиотеку
  * (если её там ещё нет) и сразу отдаётся наружу через onPick.
  */
-export function GameSearch({ recent, onPick }: { recent: Game[]; onPick: (gameId: number) => void }) {
+export function GameSearch({ onPick }: { onPick: (gameId: number) => void }) {
   const [term, setTerm] = useState("");
   const [found, setFound] = useState<{ q: string; items: Result[] }>({ q: "", items: [] });
   const [pending, start] = useTransition();
@@ -31,7 +29,7 @@ export function GameSearch({ recent, onPick }: { recent: Game[]; onPick: (gameId
       } catch {
         if (!controller.signal.aborted) setFound({ q, items: [] });
       }
-    }, 300);
+    }, 250);
     return () => {
       clearTimeout(t);
       controller.abort();
@@ -45,50 +43,54 @@ export function GameSearch({ recent, onPick }: { recent: Game[]; onPick: (gameId
     });
 
   return (
-    <div className={pending ? "pointer-events-none opacity-60" : ""}>
-      <input
-        autoFocus
-        value={term}
-        onChange={(e) => setTerm(e.target.value)}
-        placeholder="Поиск в Steam"
-        className="mb-4 w-full rounded-xl bg-elev px-4 py-3 text-[15px] outline-none placeholder:text-faint focus:ring-2 focus:ring-accent"
-      />
+    <div className={`transition ${pending ? "pointer-events-none opacity-50" : ""}`}>
+      <div className="relative mb-4">
+        <svg className="absolute top-1/2 left-4 -translate-y-1/2 text-faint" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="7" />
+          <path d="M20 20l-3.5-3.5" />
+        </svg>
+        <input
+          autoFocus
+          value={term}
+          onChange={(e) => setTerm(e.target.value)}
+          placeholder="Название игры"
+          className="w-full rounded-full bg-glass py-3.5 pr-4 pl-11 text-[16px] outline-none placeholder:text-faint focus:bg-glass2"
+        />
+      </div>
 
-      {q.length < 2 && recent.length > 0 && (
-        <>
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-dim">Недавние</p>
-          <div className="grid grid-cols-4 gap-2">
-            {recent.map((g) => (
-              <button key={g.id} onClick={() => onPick(g.id)} className="text-left">
-                <GameCover key={g.id} game={g} />
-                <p className="mt-1 truncate text-xs text-dim">{g.name}</p>
-              </button>
-            ))}
-          </div>
-        </>
-      )}
+      {q.length < 2 && <p className="px-1 text-[15px] text-faint">Ищем в Steam. Игры не из Steam тоже можно добавить.</p>}
 
       {q.length >= 2 && (
-        <ul className="divide-y divide-line">
-          {results.map((r) => (
-            <li key={r.appid}>
-              <button onClick={() => pick({ steamAppId: r.appid, name: r.name })} className="flex w-full items-center gap-3 py-2.5 text-left">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={steamCovers(r.appid).header} alt="" className="h-9 w-[77px] shrink-0 rounded-md bg-elev object-cover" />
-                <span className="truncate text-[15px]">{r.name}</span>
-              </button>
-            </li>
-          ))}
+        <ul className="-mx-2">
+          {loading &&
+            [0, 1, 2].map((i) => (
+              <li key={i} className="flex items-center gap-3 px-2 py-2">
+                <div className="skeleton h-10 w-[86px] rounded-md" />
+                <div className="skeleton h-4 w-40 rounded" />
+              </li>
+            ))}
+          {!loading &&
+            results.map((r) => (
+              <li key={r.appid}>
+                <button
+                  onClick={() => pick({ steamAppId: r.appid, name: r.name })}
+                  className="anim-fade flex w-full items-center gap-3 rounded-2xl px-2 py-2 text-left transition hover:bg-glass"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={steamArt(r.appid).header} alt="" className="h-10 w-[86px] shrink-0 rounded-md bg-glass object-cover" />
+                  <span className="truncate text-[15px]">{r.name}</span>
+                </button>
+              </li>
+            ))}
           {!loading && (
             <li>
-              <button onClick={() => pick({ name: q })} className="w-full py-3 text-left text-[15px] text-accent">
+              <button onClick={() => pick({ name: q })} className="w-full rounded-2xl px-2 py-3 text-left text-[15px] text-dim transition hover:bg-glass hover:text-fg">
                 Добавить «{q}» без Steam
               </button>
             </li>
           )}
         </ul>
       )}
-      {loading && <p className="py-3 text-sm text-dim">Ищем…</p>}
     </div>
   );
 }
