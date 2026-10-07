@@ -9,7 +9,7 @@ import { syncTimezone } from "@/app/actions";
  * Живые обновления: кто-то что-то поменял — страница перерисовывается.
  * Заодно запоминает часовой пояс браузера, чтобы время было «своим».
  */
-export function LiveSync({ timezone }: { timezone: string }) {
+export function LiveSync({ timezone, meId }: { timezone: string; meId: string }) {
   const router = useRouter();
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -22,7 +22,10 @@ export function LiveSync({ timezone }: { timezone: string }) {
 
   useEffect(() => {
     const supabase = createClient();
-    const refresh = () => {
+    // Свои изменения уже пришли с ответом сервера — второй раз не перерисовываем.
+    const refresh = (payload: { new: Record<string, unknown>; old: Record<string, unknown> }) => {
+      const row = { ...payload.old, ...payload.new };
+      if (row.user_id === meId || row.added_by === meId || row.id === meId) return;
       clearTimeout(timer.current);
       timer.current = setTimeout(() => router.refresh(), 300);
     };
@@ -35,7 +38,7 @@ export function LiveSync({ timezone }: { timezone: string }) {
       clearTimeout(timer.current);
       supabase.removeChannel(channel);
     };
-  }, [router]);
+  }, [router, meId]);
 
   return null;
 }

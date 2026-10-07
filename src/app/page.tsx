@@ -41,7 +41,7 @@ export default async function Home() {
 
   return (
     <main className="mx-auto max-w-3xl px-4 pb-16 sm:px-6">
-      <LiveSync timezone={tz} />
+      <LiveSync timezone={tz} meId={me.id} />
       <Header me={me} />
 
       {/* Сегодня / ближайшее окно */}

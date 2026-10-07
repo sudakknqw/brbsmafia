@@ -25,7 +25,8 @@ export async function proxy(request: NextRequest) {
     },
   );
 
-  await supabase.auth.getUser();
+  // getClaims проверяет токен локально, без похода на сервер авторизации.
+  await supabase.auth.getClaims();
   return response;
 }
 

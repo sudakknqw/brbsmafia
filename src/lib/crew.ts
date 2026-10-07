@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "./supabase/server";
 import type { DayEntry, Game, Member, Want } from "./types";
@@ -9,19 +10,19 @@ export const WANT_TTL_HOURS = 24;
 export const MAX_WANTS = 3;
 export const MAX_DAY_GAMES = 5;
 
-export async function getViewer() {
+// cache: за один запрос страницы пользователь проверяется один раз.
+export const getViewer = cache(async () => {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { supabase, user: null, profile: null, isMember: false };
+  const { data } = await supabase.auth.getClaims();
+  const userId = data?.claims.sub;
+  if (!userId) return { supabase, user: null, profile: null, isMember: false };
 
   const [{ data: profile }, { data: member }] = await Promise.all([
-    supabase.from("profiles").select("*").eq("id", user.id).single(),
-    supabase.from("members").select("user_id").eq("user_id", user.id).maybeSingle(),
+    supabase.from("profiles").select("*").eq("id", userId).single(),
+    supabase.from("members").select("user_id").eq("user_id", userId).maybeSingle(),
   ]);
-  return { supabase, user, profile, isMember: !!member };
-}
+  return { supabase, user: { id: userId }, profile, isMember: !!member };
+});
 
 /** Пускает дальше только участника, прошедшего первый вход. */
 export async function requireMember() {

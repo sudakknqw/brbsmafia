@@ -52,7 +52,7 @@ export default async function DayPage({ params }: PageProps<"/day/[date]">) {
 
   return (
     <main className="mx-auto max-w-3xl px-4 pb-16 sm:px-6">
-      <LiveSync timezone={tz} />
+      <LiveSync timezone={tz} meId={me.id} />
       <Header me={me} back />
 
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
