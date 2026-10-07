@@ -1,69 +1,108 @@
-import Image from "next/image";
+import Link from "next/link";
+import { Header } from "@/components/Header";
+import { LiveSync } from "@/components/LiveSync";
+import { QuickActions } from "@/components/home/QuickActions";
+import { GamesShelf } from "@/components/home/GamesShelf";
+import { StatusRow } from "@/components/home/StatusRow";
+import { AvatarStack } from "@/components/Avatar";
+import { loadActiveWants, loadEntries, loadGames, loadMembers, requireMember } from "@/lib/crew";
+import { dayStats, entryFor } from "@/lib/overlap";
+import { addDays, dayNumber, gamingDay, hourStart, formatTime, weekdayLong, weekdayShort } from "@/lib/time";
 
-export default function Home() {
+export default async function Home() {
+  const { supabase, profile: me } = await requireMember();
+  const tz = me.timezone;
+  const today = gamingDay(new Date(), tz);
+  const week = Array.from({ length: 7 }, (_, i) => addDays(today, i));
+
+  const [members, entries, games, wants] = await Promise.all([
+    loadMembers(supabase),
+    loadEntries(supabase, addDays(today, -1), addDays(today, 7)),
+    loadGames(supabase),
+    loadActiveWants(supabase),
+  ]);
+
+  const days = week.map((day) => ({ day, ...dayStats(day, tz, members, entries) }));
+  const highlight = days.find((d) => d.best) ?? null;
+  const total = members.length;
+
+  const peopleIn = (d: (typeof days)[number]) =>
+    d.best ? members.filter((m) => (d.freeHours.get(m.id) ?? []).includes(d.best!.from)) : [];
+
+  // Чаще всего выбранная игра среди тех, кто в окне.
+  const topGame = (d: (typeof days)[number]) => {
+    const counts = new Map<number, number>();
+    for (const m of peopleIn(d)) entryFor(entries, m.id, d.day)?.game_ids.forEach((g) => counts.set(g, (counts.get(g) ?? 0) + 1));
+    const [id] = [...counts.entries()].sort((a, b) => b[1] - a[1])[0] ?? [];
+    return games.find((g) => g.id === id)?.name;
+  };
+
+  const myToday = entryFor(entries, me.id, today);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="mx-auto max-w-3xl px-4 pb-16 sm:px-6">
+      <LiveSync timezone={tz} />
+      <Header me={me} />
+
+      {/* Сегодня / ближайшее окно */}
+      <Link href={`/day/${highlight?.day ?? today}`} className="block rounded-3xl bg-card p-5 transition hover:bg-[#232325]">
+        {highlight?.best ? (
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="text-sm text-dim">{highlight.day === today ? "Сегодня" : weekdayLong(highlight.day)}</p>
+              <p className="mt-0.5 text-[34px] font-bold leading-tight tracking-tight tabular-nums">
+                {formatTime(hourStart(highlight.day, highlight.best.from, tz), tz)} – {formatTime(hourStart(highlight.day, highlight.best.to, tz), tz)}
+              </p>
+              <p className="mt-1 text-sm text-dim">
+                Свободны {highlight.best.count} из {total}
+                {topGame(highlight) ? ` · чаще всего ${topGame(highlight)}` : ""}
+              </p>
+            </div>
+            <AvatarStack people={peopleIn(highlight)} size={32} ring="#1c1c1e" max={8} />
+          </div>
+        ) : (
+          <div>
+            <p className="text-sm text-dim">Сегодня</p>
+            <p className="mt-0.5 text-[28px] font-bold tracking-tight">Пока никто не совпал</p>
+            <p className="mt-1 text-sm text-dim">Отметь, когда ты свободен — может, совпадёшь с кем-то.</p>
+          </div>
+        )}
+      </Link>
+
+      <QuickActions today={today} busyToday={myToday?.status === "busy"} />
+
+      {/* Неделя */}
+      <section className="mt-8">
+        <h2 className="mb-3 text-[20px] font-bold tracking-tight">Неделя</h2>
+        <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
+          {days.map((d) => {
+            const max = Math.max(...d.counts);
+            const mine = entryFor(entries, me.id, d.day);
+            return (
+              <Link
+                key={d.day}
+                href={`/day/${d.day}`}
+                className={`rounded-2xl bg-card px-1 py-3 text-center transition hover:bg-elev ${d.day === today ? "ring-[1.5px] ring-accent" : ""}`}
+              >
+                <p className="text-xs text-dim">{weekdayShort(d.day)}</p>
+                <p className="mt-0.5 text-[17px] font-semibold tabular-nums">{dayNumber(d.day)}</p>
+                <div className="mx-auto mt-2 h-1 w-3/4 overflow-hidden rounded-full bg-elev2">
+                  <div className="h-full rounded-full bg-ok" style={{ width: `${total ? (max / total) * 100 : 0}%`, opacity: max >= 2 ? 1 : 0.5 }} />
+                </div>
+                <span
+                  className={`mx-auto mt-2 block size-1.5 rounded-full ${
+                    mine?.status === "free" ? "bg-accent" : mine?.status === "busy" ? "bg-faint" : "bg-transparent"
+                  }`}
+                />
+              </Link>
+            );
+          })}
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+      </section>
+
+      <StatusRow members={members} wants={wants} games={games} meId={me.id} />
+
+      <GamesShelf games={games} wants={wants} members={members} meId={me.id} />
+    </main>
   );
 }

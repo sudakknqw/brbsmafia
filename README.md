@@ -1,36 +1,53 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# brbs mafia
 
-## Getting Started
+Общее расписание и игры для компании. Next.js + Supabase + Vercel, всё на бесплатных тарифах.
 
-First, run the development server:
+## Запуск: шаг за шагом
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+### 1. Supabase (база и вход)
+1. Зарегистрируйся на [supabase.com](https://supabase.com) → **New project**. Регион — ближе к вам (например, Frankfurt). Пароль базы сохрани.
+2. Открой **SQL Editor → New query**, вставь весь файл [`supabase/schema.sql`](supabase/schema.sql) и нажми **Run**.
+   Внизу появится `code` — это твоё первое приглашение. Скопируй его.
+3. **Project Settings → API**: скопируй `Project URL`, `anon public` и `service_role` ключи.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Discord-приложение (кнопка «Войти через Discord»)
+1. [discord.com/developers/applications](https://discord.com/developers/applications) → **New Application** → назови `brbs mafia`.
+2. Слева **OAuth2**: скопируй **Client ID** и **Client Secret** (Reset Secret).
+3. Там же в **Redirects** добавь: `https://<твой-проект>.supabase.co/auth/v1/callback`.
+4. В Supabase: **Authentication → Sign In / Providers → Discord** → включи и вставь Client ID и Secret.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 3. Вебхук в канал
+В Discord: настройки канала → **Интеграции → Вебхуки → Новый вебхук** → **Копировать URL**.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 4. Запуск у себя на компьютере
+1. Скопируй `.env.example` в `.env.local` и заполни значения.
+2. В Supabase: **Authentication → URL Configuration → Redirect URLs** добавь `http://localhost:3000/**`.
+3. Выполни:
+   ```bash
+   npm run dev
+   ```
+4. Открой `http://localhost:3000/invite/<код из шага 1>`.
 
-## Learn More
+### 5. Выкладка на Vercel
+1. Залей папку на GitHub (приватный репозиторий).
+2. [vercel.com](https://vercel.com) → **Add New → Project** → выбери репозиторий.
+3. В **Environment Variables** добавь всё из `.env.local`, но:
+   - `NEXT_PUBLIC_SITE_URL` — адрес сайта на Vercel, например `https://brbs-mafia.vercel.app`;
+   - `CRON_SECRET` — любая длинная случайная строка.
+4. **Deploy**.
+5. В Supabase → **URL Configuration**: **Site URL** = адрес сайта, и добавь `https://<адрес-сайта>/**` в **Redirect URLs**.
 
-To learn more about Next.js, take a look at the following resources:
+Готово: открывай `https://<адрес-сайта>/invite/<код>`, входи, а дальше приглашай друзей кнопкой с человечком в шапке.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Где что менять
+- Шуточные подписи для тех, кто молчит: [`src/lib/jokes.ts`](src/lib/jokes.ts).
+- Цвета темы: [`src/app/globals.css`](src/app/globals.css).
+- Пресеты быстрых кнопок («Сегодня вечером» и т.д.): [`src/app/actions.ts`](src/app/actions.ts), константы `EVENING` и `WEEKEND_EVENING`.
+- Когда в Discord начинается новый день: `CREW_TIMEZONE` в переменных и расписание в [`vercel.json`](vercel.json) (сейчас 05:00 UTC = 08:00 по Москве).
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Как устроено
+- Всё время в базе хранится в UTC; каждый видит его по часам своего браузера.
+- «Игровой день» идёт с 08:00 до 08:00, чтобы ночные посиделки не разрывались.
+- Статус «хочу сейчас» — до 3 игр, живёт 24 часа.
+- На день можно выбрать до 5 игр.
+- Сообщение в Discord одно на день: создаётся утром и правится после каждого изменения на сайте.
