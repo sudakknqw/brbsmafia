@@ -2,7 +2,7 @@
 
 export function CloseBar({ onClose }: { onClose: () => void }) {
   return (
-    <div className="relative z-10 mx-auto flex w-full max-w-6xl justify-end px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-4 sm:px-8 sm:pt-6">
+    <div className="relative z-10 mx-auto flex w-full max-w-6xl justify-end px-4 pt-[max(calc(1rem+var(--tg-safe-area-inset-top,0px)+var(--tg-content-safe-area-inset-top,0px)),env(safe-area-inset-top))] pb-4 sm:px-8 sm:pt-[calc(1.5rem+var(--tg-safe-area-inset-top,0px)+var(--tg-content-safe-area-inset-top,0px))]">
       <button
         autoFocus
         onClick={onClose}

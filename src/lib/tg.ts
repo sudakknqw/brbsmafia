@@ -3,6 +3,9 @@
 
 type WebApp = {
   initData: string;
+  platform?: string; // "tdesktop", "macos", "web", "weba", "android", "ios"…
+  isFullscreen?: boolean;
+  requestFullscreen?(): void;
   initDataUnsafe: { user?: { id: number; allows_write_to_pm?: boolean }; start_param?: string };
   ready(): void;
   expand(): void;
