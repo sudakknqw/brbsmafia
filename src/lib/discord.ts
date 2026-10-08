@@ -94,3 +94,92 @@ function toRanges(hours: number[]): [number, number][] {
   }
   return out;
 }
+
+// ——— Сборы пати ———
+
+type GatheringRow = {
+  id: number;
+  starts_at: string;
+  ends_at: string;
+  game_id: number | null;
+  game_name: string;
+  created_by: string | null;
+  discord_message_id: string | null;
+  members: { user_id: string; status: "in" | "out" }[];
+};
+
+/**
+ * Сообщение о сборе: при создании — новое, с упоминанием всех, кто свободен
+ * в это окно; дальше — правим его же, когда кто-то жмёт «В деле» или «Не пойду».
+ */
+export async function syncGatheringMessage(gatheringId: number, mentionIds: string[] = []) {
+  const webhook = process.env.DISCORD_WEBHOOK_URL;
+  if (!webhook) return;
+  const db = createAdminClient();
+
+  const { data: g } = await db
+    .from("gatherings")
+    .select("id, starts_at, ends_at, game_id, game_name, created_by, discord_message_id, members:gathering_members(user_id, status)")
+    .eq("id", gatheringId)
+    .maybeSingle<GatheringRow>();
+  if (!g) return;
+
+  const ids = [...new Set([g.created_by, ...g.members.map((m) => m.user_id), ...mentionIds].filter(Boolean))] as string[];
+  const [{ data: profiles }, { data: game }] = await Promise.all([
+    db.from("profiles").select("id, name, discord_id").in("id", ids),
+    g.game_id ? db.from("games").select("steam_appid").eq("id", g.game_id).maybeSingle() : Promise.resolve({ data: null }),
+  ]);
+  const byId = new Map((profiles ?? []).map((p) => [p.id as string, p as { id: string; name: string; discord_id: string | null }]));
+  const names = (status: "in" | "out") =>
+    g.members.filter((m) => m.status === status).map((m) => byId.get(m.user_id)?.name).filter(Boolean).join(", ");
+
+  const start = new Date(g.starts_at);
+  const creator = byId.get(g.created_by ?? "")?.name ?? "Кто-то";
+  const site = process.env.NEXT_PUBLIC_SITE_URL ?? "";
+  const pings = mentionIds.map((id) => byId.get(id)?.discord_id).filter(Boolean) as string[];
+
+  const body = {
+    content: `${pings.map((d) => `<@${d}>`).join(" ")}${pings.length ? "\n" : ""}**${creator}** собирает пати`,
+    embeds: [
+      {
+        title: g.game_name,
+        url: site || undefined,
+        color: 0xf4f4f6,
+        description:
+          `${ts(start)} – ${ts(new Date(g.ends_at))}, <t:${Math.floor(start.getTime() / 1000)}:R>\n\n` +
+          `**В деле:** ${names("in") || "пока никого"}` +
+          (names("out") ? `\n**Не пойдут:** ${names("out")}` : ""),
+        image: game?.steam_appid ? { url: `https://shared.steamstatic.com/store_item_assets/steam/apps/${game.steam_appid}/header.jpg` } : undefined,
+      },
+    ],
+    // Пингуем только при создании; правки сообщения никого не дёргают.
+    allowed_mentions: g.discord_message_id ? { parse: [] } : { parse: [], users: pings },
+  };
+
+  if (g.discord_message_id) {
+    await fetch(`${webhook}/messages/${g.discord_message_id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    return;
+  }
+  const res = await fetch(`${webhook}?wait=true`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    console.error("Discord webhook failed", res.status, await res.text());
+    return;
+  }
+  const message = (await res.json()) as { id: string };
+  await db.from("gatherings").update({ discord_message_id: message.id }).eq("id", g.id);
+}
+
+/** Сбор отменили — убираем его сообщение из канала. */
+export async function deleteGatheringMessage(messageId: string | null) {
+  const webhook = process.env.DISCORD_WEBHOOK_URL;
+  if (!webhook || !messageId) return;
+  await fetch(`${webhook}/messages/${messageId}`, { method: "DELETE" });
+}

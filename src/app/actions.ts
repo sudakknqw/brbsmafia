@@ -3,9 +3,10 @@
 import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { getViewer, MAX_DAY_GAMES, MAX_WANTS, WANT_TTL_HOURS } from "@/lib/crew";
-import { syncDiscord } from "@/lib/discord";
-import { addDays, gamingDay, hoursToSlots, isValidTimezone, slotsToHours, weekdayIndex } from "@/lib/time";
+import { getViewer, loadEntries, loadMembers, MAX_DAY_GAMES, MAX_WANTS, WANT_TTL_HOURS } from "@/lib/crew";
+import { deleteGatheringMessage, syncDiscord, syncGatheringMessage } from "@/lib/discord";
+import { dayStats } from "@/lib/overlap";
+import { addDays, gamingDay, hourStart, hoursToSlots, isValidTimezone, slotsToHours, weekdayIndex } from "@/lib/time";
 import type { DayEntry } from "@/lib/types";
 
 async function member() {
@@ -173,6 +174,78 @@ export async function deleteGame(gameId: number) {
   const { supabase } = await member();
   await supabase.from("games").delete().eq("id", gameId);
   changed();
+}
+
+// ——— Сборы пати ———
+
+/**
+ * Собрать пати одним нажатием: на лучшее окно дня и выбранную игру.
+ * В Discord уходит сообщение с упоминанием всех, кто свободен в это окно.
+ */
+export async function startGathering(day: string, gameId: number): Promise<{ error: string | null }> {
+  if (!isDay(day)) return { error: "Неверный день" };
+  const { supabase, userId, tz } = await member();
+
+  const { data: existing } = await supabase.from("gatherings").select("id").eq("day", day).maybeSingle();
+  if (existing) return { error: "На этот день уже собирают" };
+
+  const [members, entries, { data: game }] = await Promise.all([
+    loadMembers(supabase),
+    loadEntries(supabase, addDays(day, -1), addDays(day, 1)),
+    supabase.from("games").select("id, name").eq("id", gameId).maybeSingle(),
+  ]);
+  const { best, freeHours } = dayStats(day, tz, members, entries);
+  if (!best) return { error: "Пока никто не совпал по времени" };
+  if (!game) return { error: "Такой игры нет в библиотеке" };
+
+  const { data: created, error } = await supabase
+    .from("gatherings")
+    .insert({
+      day,
+      starts_at: hourStart(day, best.from, tz).toISOString(),
+      ends_at: hourStart(day, best.to, tz).toISOString(),
+      game_id: game.id,
+      game_name: game.name,
+      created_by: userId,
+    })
+    .select("id")
+    .single();
+  if (error) return { error: "Не получилось начать сбор. Попробуй ещё раз." };
+
+  await supabase.from("gathering_members").insert({ gathering_id: created.id, user_id: userId, status: "in" });
+  const free = members.filter((m) => m.id !== userId && (freeHours.get(m.id) ?? []).includes(best.from)).map((m) => m.id);
+  revalidatePath("/", "layout");
+  after(() => syncGatheringMessage(created.id, free).catch((e) => console.error(e)));
+  return { error: null };
+}
+
+/** «В деле», «Не пойду» или снять отметку (null). */
+export async function setGatheringStatus(gatheringId: number, status: "in" | "out" | null) {
+  const { supabase, userId } = await member();
+  if (status) {
+    await supabase
+      .from("gathering_members")
+      .upsert({ gathering_id: gatheringId, user_id: userId, status, updated_at: new Date().toISOString() });
+  } else {
+    await supabase.from("gathering_members").delete().eq("gathering_id", gatheringId).eq("user_id", userId);
+  }
+  revalidatePath("/", "layout");
+  after(() => syncGatheringMessage(gatheringId).catch((e) => console.error(e)));
+}
+
+/** Отменить может только тот, кто собирал. */
+export async function cancelGathering(gatheringId: number) {
+  const { supabase, userId } = await member();
+  const { data } = await supabase
+    .from("gatherings")
+    .select("discord_message_id")
+    .eq("id", gatheringId)
+    .eq("created_by", userId)
+    .maybeSingle();
+  if (!data) return;
+  await supabase.from("gatherings").delete().eq("id", gatheringId);
+  revalidatePath("/", "layout");
+  after(() => deleteGatheringMessage(data.discord_message_id).catch((e) => console.error(e)));
 }
 
 // ——— Профиль и приглашения ———

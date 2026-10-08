@@ -2,7 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "./supabase/server";
-import type { DayEntry, Game, Member, Want } from "./types";
+import type { DayEntry, Game, Gathering, Member, Want } from "./types";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
@@ -79,13 +79,37 @@ export async function loadCrewData(viewer: Awaited<ReturnType<typeof requireMemb
   const { supabase, profile: me } = viewer;
   const now = new Date();
   const today = gamingDay(now, me.timezone);
-  const [members, entries, games, wants, recentIds] = await Promise.all([
+  const rangeFrom = from ?? addDays(weekStart(today), -1);
+  const rangeTo = to ?? addDays(weekStart(today), 7);
+  const [members, entries, games, wants, recentIds, gatherings] = await Promise.all([
     loadMembers(supabase),
-    loadEntries(supabase, from ?? addDays(weekStart(today), -1), to ?? addDays(weekStart(today), 7)),
+    loadEntries(supabase, rangeFrom, rangeTo),
     loadGames(supabase),
     loadActiveWants(supabase),
     loadRecentGameIds(supabase, me.id),
+    loadGatherings(supabase, rangeFrom, rangeTo),
   ]);
   const recent = recentIds.map((id) => games.find((g) => g.id === id)).filter((g): g is Game => !!g);
-  return { me, members, entries, games, wants, recent, now, today };
+  return { me, members, entries, games, wants, recent, gatherings, now, today };
+}
+
+/** Сборы за период. Если таблиц ещё нет (миграцию не запускали) — просто пусто. */
+export async function loadGatherings(supabase: Supabase, from: string, to: string): Promise<Gathering[]> {
+  const { data, error } = await supabase
+    .from("gatherings")
+    .select("id, day, starts_at, ends_at, game_id, game_name, created_by, members:gathering_members(user_id, status)")
+    .gte("day", from)
+    .lte("day", to);
+  if (error) return [];
+  return (data ?? []) as Gathering[];
+}
+
+/** Данные для итогов месяца: всё отмеченное и все сборы с начала месяца. */
+export async function loadMonth(supabase: Supabase, today: string) {
+  const monthStart = today.slice(0, 8) + "01";
+  const [entries, gatherings] = await Promise.all([
+    loadEntries(supabase, monthStart, today),
+    loadGatherings(supabase, monthStart, today),
+  ]);
+  return { monthStart, entries, gatherings };
 }

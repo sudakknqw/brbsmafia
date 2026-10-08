@@ -11,16 +11,18 @@ import { AmbientTail } from "@/components/AmbientTail";
 import { who } from "@/lib/words";
 import { NamesHint } from "@/components/NamesHint";
 import type { Member } from "@/lib/types";
-import type { EditorSeed, Spotlight as SpotlightModel } from "@/lib/views";
+import type { EditorSeed, GatheringView, Spotlight as SpotlightModel } from "@/lib/views";
+import { GatheringInfo, StartGathering } from "@/components/Gathering";
 
 type Props = {
   me: Member;
   spotlight: SpotlightModel;
+  gathering: GatheringView | null;
   today: EditorSeed;
 };
 
 /** Первый экран: арт игры, которую сейчас хотят больше всего, и ближайшее окно. */
-export function Spotlight({ me, spotlight, today }: Props) {
+export function Spotlight({ me, spotlight, gathering, today }: Props) {
   const openDay = useOpenDay();
   const [busy, setBusyOptimistic] = useState(today.busy);
   const [, start] = useTransition();
@@ -64,36 +66,49 @@ export function Spotlight({ me, spotlight, today }: Props) {
           )}
         </div>
 
-        {/* Когда и кто — одним блоком под логотипом */}
-        <div className="anim-rise" style={{ animationDelay: "0.32s" }}>
-          <NamesHint names={spotlight.people.map((p) => p.name)} className="gap-3">
-            {spotlight.people.length > 0 && <AvatarStack people={spotlight.people} size={34} max={8} />}
-            <span className="flex flex-col leading-tight">
-              {when && <span className="text-[17px] font-semibold tabular-nums">{when}</span>}
-              <span className="mt-0.5 text-[15px] text-dim">{caption}</span>
-            </span>
-          </NamesHint>
-        </div>
+        {/* Идёт сбор — он главнее всего остального */}
+        {gathering ? (
+          <div style={{ animationDelay: "0.32s" }}>
+            <GatheringInfo key={gathering.id} gathering={gathering} meId={me.id} />
+            <DayLink day={spotlight.day} className="mt-3 inline-block py-1 text-[15px] font-medium text-dim transition hover:text-fg">
+              Расписание дня
+            </DayLink>
+          </div>
+        ) : (
+          <>
+            {/* Когда и кто — одним блоком под логотипом */}
+            <div className="anim-rise" style={{ animationDelay: "0.32s" }}>
+              <NamesHint names={spotlight.people.map((p) => p.name)} className="gap-3">
+                {spotlight.people.length > 0 && <AvatarStack people={spotlight.people} size={34} max={8} />}
+                <span className="flex flex-col leading-tight">
+                  {when && <span className="text-[17px] font-semibold tabular-nums">{when}</span>}
+                  <span className="mt-0.5 text-[15px] text-dim">{caption}</span>
+                </span>
+              </NamesHint>
+            </div>
 
-        <div className="anim-rise mt-7 flex flex-wrap gap-2.5" style={{ animationDelay: "0.45s" }}>
-          <button
-            onClick={(e) => openDay?.(today.day, e.currentTarget, true)}
-            className="rounded-full bg-fg px-6 py-3 text-[16px] font-semibold text-ink transition hover:scale-[1.03] active:scale-[0.97]"
-          >
-            {marked ? "Изменить доступное время" : "Я свободен сегодня"}
-          </button>
-          {!marked && (
-            <button
-              onClick={toggleBusy}
-              className="rounded-full bg-glass2 px-5 py-3 text-[16px] font-medium backdrop-blur-md transition hover:bg-white/20 active:scale-[0.97]"
-            >
-              {busy ? "Всё-таки могу" : "Сегодня не могу"}
-            </button>
-          )}
-          <DayLink day={spotlight.day} className="rounded-full px-4 py-3 text-[16px] font-medium text-dim transition hover:text-fg">
-            Расписание дня
-          </DayLink>
-        </div>
+            <div className="anim-rise mt-7 flex flex-wrap gap-2.5" style={{ animationDelay: "0.45s" }}>
+              <button
+                onClick={(e) => openDay?.(today.day, e.currentTarget, true)}
+                className="rounded-full bg-fg px-6 py-3 text-[16px] font-semibold text-ink transition hover:scale-[1.03] active:scale-[0.97]"
+              >
+                {marked ? "Изменить доступное время" : "Я свободен сегодня"}
+              </button>
+              {!marked && (
+                <button
+                  onClick={toggleBusy}
+                  className="rounded-full bg-glass2 px-5 py-3 text-[16px] font-medium backdrop-blur-md transition hover:bg-white/20 active:scale-[0.97]"
+                >
+                  {busy ? "Всё-таки могу" : "Сегодня не могу"}
+                </button>
+              )}
+              {when && game && <StartGathering day={spotlight.day} gameId={game.id} gameName={game.name} />}
+              <DayLink day={spotlight.day} className="rounded-full px-4 py-3 text-[16px] font-medium text-dim transition hover:text-fg">
+                Расписание дня
+              </DayLink>
+            </div>
+          </>
+        )}
       </div>
     </section>
   );

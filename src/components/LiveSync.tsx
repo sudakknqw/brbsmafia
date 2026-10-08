@@ -30,7 +30,7 @@ export function LiveSync({ timezone, meId }: { timezone: string; meId: string })
       timer.current = setTimeout(() => router.refresh(), 300);
     };
     const channel = supabase.channel("crew");
-    for (const table of ["day_entries", "wants", "games", "profiles", "members"]) {
+    for (const table of ["day_entries", "wants", "games", "profiles", "members", "gatherings", "gathering_members"]) {
       channel.on("postgres_changes", { event: "*", schema: "public", table }, refresh);
     }
     channel.subscribe();

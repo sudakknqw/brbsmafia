@@ -28,3 +28,14 @@ export type Want = {
 };
 
 export type BestWindow = { from: number; to: number; count: number };
+
+export type Gathering = {
+  id: number;
+  day: string;
+  starts_at: string;
+  ends_at: string;
+  game_id: number | null;
+  game_name: string;
+  created_by: string | null;
+  members: { user_id: string; status: "in" | "out" }[];
+};

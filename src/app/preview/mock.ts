@@ -17,7 +17,7 @@ export function mockCrew(variant: "full" | "empty" = "full"): CrewData {
   ];
   const now = new Date();
   const today = gamingDay(now, me.timezone);
-  if (variant === "empty") return { me, members: members.slice(0, 3), entries: [], games: [], wants: [], recent: [], now, today };
+  if (variant === "empty") return { me, members: members.slice(0, 3), entries: [], games: [], wants: [], recent: [], gatherings: [], now, today };
 
   const games: Game[] = [
     { id: 1, steam_appid: 548430, name: "Deep Rock Galactic" },
@@ -62,5 +62,21 @@ export function mockCrew(variant: "full" | "empty" = "full"): CrewData {
     { user_id: "u-sasha", game_id: 5, created_at: ago(4) },
     { user_id: "u-zhenya", game_id: 4, created_at: ago(6) },
   ];
-  return { me, members, entries, games, wants, recent: [games[0], games[4]], now, today };
+  const gatherings = [
+    {
+      id: 1,
+      day: today,
+      starts_at: hoursToSlots(today, [13], tz)[0].start,
+      ends_at: hoursToSlots(today, [14], tz)[0].end,
+      game_id: 1,
+      game_name: "Deep Rock Galactic",
+      created_by: "u-lesha",
+      members: [
+        { user_id: "u-lesha", status: "in" as const },
+        { user_id: "u-masha", status: "in" as const },
+        { user_id: "u-anya", status: "out" as const },
+      ],
+    },
+  ];
+  return { me, members, entries, games, wants, recent: [games[0], games[4]], gatherings, now, today };
 }

@@ -8,7 +8,8 @@ const HOUR = 3600_000;
 
 export type Slot = { start: string; end: string };
 
-function offsetMinutes(date: Date, tz: string): number {
+/** Смещение часового пояса от UTC в минутах на данный момент. */
+export function offsetMinutes(date: Date, tz: string): number {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: tz,
     hourCycle: "h23",

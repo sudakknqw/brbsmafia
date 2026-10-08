@@ -3,7 +3,7 @@
 import { dayStats, entryFor } from "./overlap";
 import { silentJoke } from "./jokes";
 import { addDays, dateLong, DAY_HOURS, dayNumber, formatTime, hourStart, weekdayLong, weekdayShort, weekStart } from "./time";
-import type { DayEntry, Game, Member, Want } from "./types";
+import type { DayEntry, Game, Gathering, Member, Want } from "./types";
 
 export type CrewData = {
   me: Member;
@@ -12,6 +12,7 @@ export type CrewData = {
   games: Game[];
   wants: Want[];
   recent: Game[];
+  gatherings: Gathering[];
   now: Date;
   today: string;
 };
@@ -23,6 +24,41 @@ export type Spotlight = {
   people: Member[];
   freeCount: number;
 };
+
+export type GatheringView = {
+  id: number;
+  day: string;
+  when: string; // «21:00 – 23:00» по часам зрителя
+  gameName: string;
+  creator: Member | null;
+  going: Member[];
+  notGoing: Member[];
+  myStatus: "in" | "out" | null;
+  mine: boolean;
+};
+
+/** Сбор на день — в том виде, как его показывают экраны. */
+export function gatheringView(data: CrewData, day: string): GatheringView | null {
+  const g = data.gatherings.find((x) => x.day === day);
+  if (!g) return null;
+  const tz = data.me.timezone;
+  const pick = (status: "in" | "out") =>
+    g.members
+      .filter((m) => m.status === status)
+      .map((m) => data.members.find((x) => x.id === m.user_id))
+      .filter((m): m is Member => !!m);
+  return {
+    id: g.id,
+    day,
+    when: `${formatTime(g.starts_at, tz)} – ${formatTime(g.ends_at, tz)}`,
+    gameName: g.game_name,
+    creator: data.members.find((m) => m.id === g.created_by) ?? null,
+    going: pick("in"),
+    notGoing: pick("out"),
+    myStatus: g.members.find((m) => m.user_id === data.me.id)?.status ?? null,
+    mine: g.created_by === data.me.id,
+  };
+}
 
 export type EditorSeed = {
   day: string;
@@ -103,6 +139,7 @@ export function buildHome(data: CrewData) {
 
   return {
     spotlight,
+    gathering: gatheringView(data, spotlight.day),
     total: data.members.length,
     week: days.map((d) => ({
       day: d.day,
@@ -166,6 +203,7 @@ export function buildDay(data: CrewData, day: string) {
     rows,
     dayGames,
     spotlightGame: dayGames[0]?.game ?? null,
+    gathering: gatheringView(data, day),
     editor,
   };
 }

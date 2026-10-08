@@ -1,15 +1,23 @@
 import { Avatar } from "@/components/Avatar";
 import { Cover } from "@/components/GameArt";
+import { FriendTime } from "@/components/FriendTime";
 import type { HomeModel } from "@/lib/views";
 
 /** Друзья и игры, которые у них сейчас в статусе. */
-export function StatusRow({ statuses, meId }: { statuses: HomeModel["statuses"]; meId: string }) {
+export function StatusRow({ statuses, meId, viewerTz }: { statuses: HomeModel["statuses"]; meId: string; viewerTz: string }) {
   return (
     <section>
       <h2 className="mb-4 text-[22px] font-semibold tracking-tight">Статусы</h2>
-      <div className="no-scrollbar -mx-4 flex gap-6 overflow-x-auto px-4 py-1 sm:-mx-8 sm:px-8">
+      {/* Сверху запас под подсказку со временем друга: прокрутка обрезала бы её. */}
+      <div className="no-scrollbar -mx-4 -mt-16 flex gap-6 overflow-x-auto px-4 pt-16 pb-1 sm:-mx-8 sm:px-8">
         {statuses.map(({ member, games }) => (
-          <div key={member.id} className="w-[84px] shrink-0">
+          <FriendTime
+            key={member.id}
+            name={member.name}
+            timezone={member.timezone}
+            viewerTz={viewerTz}
+            className="w-[84px] shrink-0 flex-col"
+          >
             <div className="relative mx-auto size-[68px]">
               <Avatar id={member.id} name={member.name} url={member.avatar_url} size={68} className={games.length ? "" : "opacity-40 grayscale"} />
               <div className="absolute -right-3 -bottom-1.5 flex">
@@ -26,7 +34,7 @@ export function StatusRow({ statuses, meId }: { statuses: HomeModel["statuses"];
             </div>
             <p className="mt-2.5 truncate text-center text-[14px] font-medium">{member.id === meId ? "Ты" : member.name}</p>
             <p className="truncate text-center text-[12px] text-faint">{games.length ? games.map((g) => g.name).join(", ") : "без статуса"}</p>
-          </div>
+          </FriendTime>
         ))}
       </div>
     </section>

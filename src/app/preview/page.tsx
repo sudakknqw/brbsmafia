@@ -13,5 +13,5 @@ export default async function Preview({ searchParams }: PageProps<"/preview">) {
   const n = Number(params.n);
   if (n >= 1 && n <= 8) data.members = data.members.slice(0, n);
   if ("day" in params) return <DayView data={data} day={data.today} />;
-  return <HomeView data={data} />;
+  return <HomeView data={data} month={{ monthStart: data.today.slice(0, 8) + "01", entries: data.entries, gatherings: data.gatherings }} />;
 }

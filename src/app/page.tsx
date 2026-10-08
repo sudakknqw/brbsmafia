@@ -1,14 +1,16 @@
 import { LiveSync } from "@/components/LiveSync";
 import { HomeView } from "@/components/home/HomeView";
-import { loadCrewData, requireMember } from "@/lib/crew";
+import { loadCrewData, loadMonth, requireMember } from "@/lib/crew";
+import { gamingDay } from "@/lib/time";
 
 export default async function Home() {
   const viewer = await requireMember();
-  const data = await loadCrewData(viewer);
+  const today = gamingDay(new Date(), viewer.profile.timezone);
+  const [data, month] = await Promise.all([loadCrewData(viewer), loadMonth(viewer.supabase, today)]);
   return (
     <>
       <LiveSync timezone={data.me.timezone} meId={data.me.id} />
-      <HomeView data={data} />
+      <HomeView data={data} month={month} />
     </>
   );
 }

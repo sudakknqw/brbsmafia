@@ -2,6 +2,7 @@ import { AvatarStack } from "@/components/Avatar";
 import { Ambient, HeroArt } from "@/components/GameArt";
 import { TopBar } from "@/components/TopBar";
 import { JumpToMine } from "./JumpToMine";
+import { GatheringInfo, StartGathering } from "@/components/Gathering";
 import { Timeline } from "./Timeline";
 import { MAX_DAY_GAMES } from "@/lib/limits";
 import { buildDay, type CrewData } from "@/lib/views";
@@ -49,7 +50,14 @@ export function DayView({ data, day, onClose, invite }: { data: CrewData; day: s
             )}
           </p>
           <div className="anim-rise mt-6" style={{ animationDelay: "calc(var(--base, 0s) + 0.24s)" }}>
-            <JumpToMine marked={m.editor.initialHours.length > 0} />
+            {m.gathering ? (
+              <GatheringInfo key={m.gathering.id} gathering={m.gathering} meId={data.me.id} />
+            ) : (
+              <div className="flex flex-wrap gap-2.5">
+                <JumpToMine marked={m.editor.initialHours.length > 0} />
+                {m.best && game && <StartGathering day={day} gameId={game.id} gameName={game.name} />}
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -67,6 +75,7 @@ export function DayView({ data, day, onClose, invite }: { data: CrewData; day: s
           recent={data.recent}
           maxGames={MAX_DAY_GAMES}
           invite={invite}
+          viewerTz={data.me.timezone}
         />
 
         {/* Игры этого дня */}

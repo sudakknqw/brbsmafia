@@ -12,6 +12,7 @@ import { DAY_HOURS } from "@/lib/time";
 import type { Game, Member } from "@/lib/types";
 import { plural, who } from "@/lib/words";
 import { NamesHint } from "@/components/NamesHint";
+import { FriendTime } from "@/components/FriendTime";
 
 type Row = { member: Member; hours: number[]; state: "free" | "busy" | "silent"; note: string | null };
 type Range = [number, number];
@@ -27,6 +28,7 @@ type Props = {
   maxGames: number;
   /** Подсказка «нажми в своей строке» сразу при открытии. */
   invite?: boolean;
+  viewerTz: string;
 };
 
 const pct = (i: number) => `${(i / DAY_HOURS) * 100}%`;
@@ -74,7 +76,7 @@ function toRange(hours: number[]): Range | null {
  * Шкала дня. В своей строке время отмечается прямо здесь: нажал начало,
  * нажал конец — появляется окно с выбором игр. Общее окно пересчитывается сразу.
  */
-export function Timeline({ day, hourLabels, rows, meId, initialGames, games, recent, maxGames, invite }: Props) {
+export function Timeline({ day, hourLabels, rows, meId, initialGames, games, recent, maxGames, invite, viewerTz }: Props) {
   const mine = rows.find((r) => r.member.id === meId)!;
   const others = rows.filter((r) => r.member.id !== meId);
 
@@ -274,10 +276,12 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
         <div className="mt-1">
           {others.map(({ member, state }) => (
             <div key={member.id} className="flex h-12 items-center gap-2 pr-1">
-              <span className={`flex min-w-0 flex-1 items-center gap-2 ${state === "free" ? "" : "opacity-45"}`}>
-                <Avatar id={member.id} name={member.name} url={member.avatar_url} size={26} />
-                <span className="truncate text-[14px] font-medium">{member.name}</span>
-              </span>
+              <FriendTime name={member.name} timezone={member.timezone} viewerTz={viewerTz} className="flex-1">
+                <span className={`flex min-w-0 items-center gap-2 ${state === "free" ? "" : "opacity-45"}`}>
+                  <Avatar id={member.id} name={member.name} url={member.avatar_url} size={26} />
+                  <span className="truncate text-[14px] font-medium">{member.name}</span>
+                </span>
+              </FriendTime>
               {state === "busy" && (
                 <span title="Не может" className="flex size-7 shrink-0 items-center justify-center rounded-full bg-bad text-[9px] font-extrabold tracking-wide text-white">
                   NO
