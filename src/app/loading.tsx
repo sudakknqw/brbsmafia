@@ -6,7 +6,7 @@ export default function Loading() {
     <>
       {/* Первый заход: буква B ждёт данные, потом к ней слетается пати. */}
       <div className="splash fixed inset-0 z-[60] flex items-center justify-center bg-ink" aria-label="Загрузка">
-        <div className="relative size-0 animate-pulse">
+        <div className="relative size-0 animate-pulse max-[480px]:scale-[0.8]">
           <SplashLetter />
         </div>
       </div>

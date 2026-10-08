@@ -7,9 +7,10 @@ import { choreography, entranceLength, type Frame } from "./choreography";
 
 export const SPLASH_KEY = "brbs-splash";
 const EASE = "cubic-bezier(0.2, 0.8, 0.2, 1)";
-const START = 200; // пауза перед выходом участников
-const HOLD = 380; // все собрались — короткая пауза
-const OUT = 420; // финал: собираются в букву и экран растворяется
+const START = 260; // пауза перед выходом участников
+const HOLD = 520; // все собрались — короткая пауза
+const OUT = 540; // финал: собираются в букву и экран растворяется
+const AVATAR = 64;
 
 const keyframe = (f: Frame): Keyframe => ({
   transform: `translate(${f.x}px, ${f.y}px) scale(${f.s ?? 1})`,
@@ -66,8 +67,8 @@ export function Splash({ members, demo = false, freezeAt }: { members: Member[];
     // Все на месте — буква отвечает коротким толчком.
     animations.push(
       letter.animate([{ transform: "scale(1)" }, { transform: "scale(1.14)" }, { transform: "scale(1)" }], {
-        duration: 360,
-        delay: gathered - 60,
+        duration: 460,
+        delay: gathered - 80,
         easing: EASE,
       }),
     );
@@ -120,10 +121,11 @@ export function Splash({ members, demo = false, freezeAt }: { members: Member[];
       className={`${demo ? "" : "splash"} fixed inset-0 z-[60] flex items-center justify-center bg-ink`}
       aria-hidden="true"
     >
-      <div className="relative size-0">
+      {/* На узком экране сцена чуть ужимается, чтобы корона и орбита не вылезали за края. */}
+      <div className="relative size-0 max-[480px]:scale-[0.8]">
         {crew.map((m) => (
-          <div key={m.id} data-member className="absolute -top-[22px] -left-[22px] opacity-0">
-            <Avatar id={m.id} name={m.name} url={m.avatar_url} size={44} ring="var(--color-ink)" />
+          <div key={m.id} data-member className="absolute opacity-0" style={{ top: -AVATAR / 2, left: -AVATAR / 2 }}>
+            <Avatar id={m.id} name={m.name} url={m.avatar_url} size={AVATAR} ring="var(--color-ink)" />
           </div>
         ))}
         <SplashLetter />
@@ -140,9 +142,9 @@ export function SplashLetter() {
       data-letter
       src="/brand/b.png"
       alt=""
-      width={64}
-      height={64}
-      className="absolute -top-8 -left-8 size-16 max-w-none rounded-full"
+      width={92}
+      height={92}
+      className="absolute -top-[46px] -left-[46px] size-[92px] max-w-none rounded-full"
     />
   );
 }

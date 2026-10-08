@@ -125,9 +125,17 @@ const plays: Record<number, () => Move[]> = {
     })),
 };
 
+// Постановки задуманы в «базовых» единицах; на экране всё крупнее и чуть медленнее.
+export const SIZE = 1.45; // размах: расстояния от буквы
+export const TEMPO = 1.25; // темп: во сколько раз дольше базового
+
 export function choreography(count: number): Move[] {
   const n = Math.max(1, Math.min(8, count));
-  return plays[n]();
+  return plays[n]().map((m) => ({
+    delay: m.delay * TEMPO,
+    duration: m.duration * TEMPO,
+    frames: m.frames.map((f) => ({ ...f, x: f.x * SIZE, y: f.y * SIZE })),
+  }));
 }
 
 /** Сколько длится выход всех участников (без финала). */
