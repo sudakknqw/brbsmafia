@@ -14,7 +14,11 @@ export async function GET(request: NextRequest) {
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
       // Участник нашего Discord-сервера попадает в компанию сразу, без приглашения.
-      await joinIfInGuild(data.user.id, data.session.provider_token).catch(() => false);
+      const check = await joinIfInGuild(data.user.id, data.session.provider_token).catch(() => "discord-error" as const);
+      // Не пустило и это не вход по приглашению — экран входа объяснит почему.
+      if (check !== "joined" && check !== "member" && !safeNext.startsWith("/join/")) {
+        return NextResponse.redirect(`${origin}/welcome?why=${check}`);
+      }
       return NextResponse.redirect(`${origin}${safeNext}`);
     }
   }
