@@ -11,6 +11,7 @@ import { bestWindow } from "@/lib/overlap";
 import { DAY_HOURS } from "@/lib/time";
 import type { Game, Member } from "@/lib/types";
 import { plural, who } from "@/lib/words";
+import { busyPhrase, noMatchPhrase } from "@/lib/phrases";
 import { NamesHint } from "@/components/NamesHint";
 import { FriendTime } from "@/components/FriendTime";
 
@@ -190,7 +191,7 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
               <NamesHint names={bestNames}>{who(bestNames, "свободен", "свободны")}</NamesHint>
             </>
           ) : (
-            "Пока никто не совпал"
+            noMatchPhrase(day)
           )}
         </p>
       </div>
@@ -302,7 +303,7 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
                 </span>
               </FriendTime>
               {state === "busy" && (
-                <span title="Не может" className="flex size-7 shrink-0 items-center justify-center rounded-full bg-bad text-[9px] font-extrabold tracking-wide text-white">
+                <span title={busyPhrase(member.id, day)} className="flex size-7 shrink-0 items-center justify-center rounded-full bg-bad text-[9px] font-extrabold tracking-wide text-white">
                   NO
                 </span>
               )}

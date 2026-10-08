@@ -1,7 +1,7 @@
 import "server-only";
 import { createAdminClient } from "./supabase/admin";
 import { dayStats, entryFor } from "./overlap";
-import { silentJoke } from "./jokes";
+import { busyPhrase, noMatchPhrase, silentPhrase } from "./phrases";
 import { addDays, dateLong, gamingDay, hourStart, weekdayLong } from "./time";
 import type { DayEntry, Game, Member } from "./types";
 
@@ -35,8 +35,8 @@ export async function syncDiscord() {
   const lines = members.map((m) => {
     const entry = entryFor(entries, m.id, day);
     const hours = freeHours.get(m.id) ?? [];
-    if (entry?.status === "busy") return `○ **${m.name}** — сегодня не может`;
-    if (!hours.length) return `○ **${m.name}** — ${silentJoke(m.id, day)}`;
+    if (entry?.status === "busy") return `○ **${m.name}** — ${busyPhrase(m.id, day)}`;
+    if (!hours.length) return `○ **${m.name}** — ${silentPhrase(m.id, day)}`;
     const ranges = toRanges(hours)
       .map(([a, b]) => `${ts(hourStart(day, a, tz))}–${ts(hourStart(day, b, tz))}`)
       .join(", ");
@@ -47,7 +47,7 @@ export async function syncDiscord() {
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? "";
   const headline = best
     ? `Лучшее окно: ${ts(hourStart(day, best.from, tz))}–${ts(hourStart(day, best.to, tz))} · свободны ${best.count}`
-    : "Пока никто не совпал";
+    : noMatchPhrase(day);
 
   const body = {
     embeds: [

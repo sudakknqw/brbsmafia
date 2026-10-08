@@ -36,10 +36,10 @@ export function Spotlight({ me, spotlight, gathering, today }: Props) {
 
   const names = spotlight.people.map((p) => (p.id === me.id ? "ты" : p.name));
   const caption = when
-    ? game
+    ? game && spotlight.picked
       ? `${who(names, "Свободен", "Свободны")}, больше всего хотят сюда`
       : `${who(names, "Свободен", "Свободны")}. Осталось выбрать игру`
-    : game && names.length
+    : game && spotlight.picked && names.length
       ? `${who(names, "Хочет", "Хотят")}. Осталось совпасть по времени`
       : "Отметь, когда свободен, и выбери, во что хочешь";
 

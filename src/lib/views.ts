@@ -1,7 +1,7 @@
 // Из сырых данных — то, что показывают экраны. Без обращения к базе,
 // поэтому этим же пользуется страница предпросмотра с выдуманными данными.
 import { dayStats, entryFor } from "./overlap";
-import { silentJoke } from "./jokes";
+import { noMatchPhrase, pick, silentPhrase } from "./phrases";
 import { addDays, dateLong, DAY_HOURS, dayNumber, dayWindow, formatTime, hourStart, weekdayLong, weekdayShort, weekStart } from "./time";
 import type { DayEntry, Game, Gathering, Member, Want } from "./types";
 
@@ -19,6 +19,8 @@ export type CrewData = {
 
 export type Spotlight = {
   game: Game | null;
+  /** Игру выбрали люди (а не подставили любую из библиотеки). */
+  picked: boolean;
   day: string;
   when: string | null; // «Сегодня, 21:00 – 23:00»
   people: Member[];
@@ -99,6 +101,11 @@ function leadingGame(data: CrewData, day: string, peopleIds: string[]): Game | n
   return data.games.find((g) => g.id === best?.[0]) ?? null;
 }
 
+/** Если никто ничего не выбрал — любая игра из библиотеки, одна и та же весь день. */
+function anyGame(data: CrewData): Game | null {
+  return data.games.length ? pick(data.games, data.today) : null;
+}
+
 export function editorSeed(data: CrewData, day: string): EditorSeed {
   const tz = data.me.timezone;
   const { freeHours } = dayStats(day, tz, [data.me], data.entries);
@@ -130,8 +137,10 @@ export function buildHome(data: CrewData) {
   let spotlight: Spotlight;
   if (lit?.best) {
     const inWindow = data.members.filter((m) => (lit.freeHours.get(m.id) ?? []).includes(lit.best!.from));
+    const chosen = leadingGame(data, lit.day, inWindow.map((m) => m.id));
     spotlight = {
-      game: leadingGame(data, lit.day, inWindow.map((m) => m.id)),
+      game: chosen ?? anyGame(data),
+      picked: !!chosen,
       day: lit.day,
       when: `${dayName(lit.day, data.today)}, ${formatTime(hourStart(lit.day, lit.best.from, tz), tz)} – ${formatTime(
         hourStart(lit.day, lit.best.to, tz),
@@ -141,9 +150,11 @@ export function buildHome(data: CrewData) {
       freeCount: lit.best.count,
     };
   } else {
-    const game = leadingGame(data, data.today, []) ?? data.games[data.games.length - 1] ?? null;
+    const chosen = leadingGame(data, data.today, []);
+    const game = chosen ?? anyGame(data);
     spotlight = {
       game,
+      picked: !!chosen,
       day: data.today,
       when: null,
       people: game ? data.members.filter((m) => data.wants.some((w) => w.user_id === m.id && w.game_id === game.id)) : [],
@@ -194,7 +205,7 @@ export function buildDay(data: CrewData, day: string) {
       const entry = entryFor(data.entries, m.id, day);
       const hours = freeHours.get(m.id) ?? [];
       const state: keyof typeof order = hours.length ? "free" : entry?.status === "busy" ? "busy" : "silent";
-      return { member: m, hours, state, note: state === "silent" ? silentJoke(m.id, day) : null };
+      return { member: m, hours, state, note: state === "silent" ? silentPhrase(m.id, day) : null };
     })
     .sort((a, b) => order[a.state] - order[b.state]);
 
@@ -210,6 +221,7 @@ export function buildDay(data: CrewData, day: string) {
   return {
     day,
     title: dayName(day, data.today),
+    noMatch: noMatchPhrase(day),
     date: `${weekdayLong(day)}, ${dateLong(day)}`,
     hourLabels: editor.hourLabels,
     best,

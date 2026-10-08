@@ -46,7 +46,7 @@ export function DayView({ data, day, onClose, invite }: { data: CrewData; day: s
                 <NamesHint names={bestNames}>{who(bestNames, "свободен", "свободны")}</NamesHint>
               </>
             ) : (
-              <span className="text-dim">Пока никто не совпал</span>
+              <span className="text-dim">{m.noMatch}</span>
             )}
           </p>
           <div className="anim-rise mt-6" style={{ animationDelay: "calc(var(--base, 0s) + 0.24s)" }}>

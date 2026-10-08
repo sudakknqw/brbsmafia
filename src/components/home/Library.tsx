@@ -81,9 +81,10 @@ export function Library({ games, wants, members, meId }: { games: Game[]; wants:
       {order.length === 0 ? (
         <button
           onClick={() => setAdding(true)}
-          className="tile flex aspect-[2/3] w-[140px] items-center justify-center rounded-[10px] border border-dashed border-line text-[15px] text-dim"
+          aria-label="Добавить игру"
+          className="tile flex aspect-[2/3] w-[140px] items-center justify-center rounded-[10px] border border-dashed border-line text-[40px] font-light text-dim"
         >
-          Первая игра
+          +
         </button>
       ) : (
         <div className="grid grid-cols-3 gap-x-3 gap-y-6 sm:grid-cols-4 lg:grid-cols-6">

@@ -6,6 +6,7 @@ import { AvatarStack } from "./Avatar";
 import { NamesHint } from "./NamesHint";
 import type { GatheringView } from "@/lib/views";
 import { who } from "@/lib/words";
+import { DECLINE, JOIN, pick } from "@/lib/phrases";
 
 /** Кнопка «Собрать пати»: одно нажатие — сбор на лучшее окно дня и сообщение в Discord. */
 export function StartGathering({ day, gameId, gameName }: { day: string; gameId: number; gameName: string }) {
@@ -77,7 +78,7 @@ export function GatheringInfo({ gathering, meId }: { gathering: GatheringView; m
               <path d="M5 12l5 5L19 7" />
             </svg>
           )}
-          {status === "in" ? "Ты в деле" : "Я в деле"}
+          {status === "in" ? "Ты в деле" : pick(JOIN, gathering.id)}
         </button>
         <button
           onClick={() => choose("out")}
@@ -86,7 +87,7 @@ export function GatheringInfo({ gathering, meId }: { gathering: GatheringView; m
             status === "out" ? "bg-bad text-white" : "bg-glass2 hover:bg-white/20"
           }`}
         >
-          Не пойду
+          {pick(DECLINE, gathering.id)}
         </button>
         {gathering.mine && (
           <button
