@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { DayView } from "./DayView";
 import type { CrewData } from "@/lib/views";
 
-type OpenDay = (day: string, origin: HTMLElement | null) => void;
+type OpenDay = (day: string, origin: HTMLElement | null, invite?: boolean) => void;
 const DayOverlayContext = createContext<OpenDay | null>(null);
 
 /** Открыть день поверх главной, раскрыв его из элемента origin. */
@@ -35,6 +35,7 @@ function clipFrom(el: HTMLElement | null) {
  */
 export function DayOverlayProvider({ data, children }: { data: CrewData; children: ReactNode }) {
   const [day, setDay] = useState<string | null>(null);
+  const [invite, setInvite] = useState(false);
   const panel = useRef<HTMLDivElement>(null);
   const origin = useRef<HTMLElement | null>(null);
   const closing = useRef(false);
@@ -74,8 +75,9 @@ export function DayOverlayProvider({ data, children }: { data: CrewData; childre
     }
   }, [animateClose]);
 
-  const open = useCallback<OpenDay>((d, el) => {
+  const open = useCallback<OpenDay>((d, el, withInvite = false) => {
     origin.current = el;
+    setInvite(withInvite);
     setDay(d);
     history.pushState(history.state, "", `#${d}`);
     pushed.current = true;
@@ -140,7 +142,7 @@ export function DayOverlayProvider({ data, children }: { data: CrewData; childre
           style={{ ["--base" as string]: "0.22s" }}
         >
           <div>
-            <DayView data={data} day={day} onClose={close} />
+            <DayView data={data} day={day} onClose={close} invite={invite} />
           </div>
         </div>
       )}

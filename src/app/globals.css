@@ -94,6 +94,12 @@ button:disabled {
     transform: scale(1.15);
   }
 }
+@keyframes popover-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.97);
+  }
+}
 @keyframes sheet-in {
   from {
     transform: translateY(100%);
@@ -136,6 +142,10 @@ button:disabled {
 .anim-grow {
   transform-origin: left;
   animation: grow-x 0.6s var(--ease-out) both;
+}
+.anim-popover {
+  transform-origin: top center;
+  animation: popover-in 0.28s var(--ease-out) both;
 }
 .anim-sheet {
   animation: sheet-in 0.36s var(--ease-out) both;

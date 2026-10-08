@@ -1,33 +1,20 @@
-import { Avatar, AvatarStack } from "@/components/Avatar";
+import { AvatarStack } from "@/components/Avatar";
 import { Ambient, HeroArt } from "@/components/GameArt";
 import { TopBar } from "@/components/TopBar";
-import { DayActions } from "./DayActions";
-import { memberColor } from "@/lib/colors";
+import { JumpToMine } from "./JumpToMine";
+import { Timeline } from "./Timeline";
 import { MAX_DAY_GAMES } from "@/lib/limits";
-import { DAY_HOURS } from "@/lib/time";
 import { buildDay, type CrewData } from "@/lib/views";
 import { people } from "@/lib/words";
 import { HeaderCard } from "./HeaderCard";
 import { AmbientTail } from "@/components/AmbientTail";
 import { CloseBar } from "./CloseBar";
 
-const pct = (i: number) => `${(i / DAY_HOURS) * 100}%`;
-
-function runs(hours: number[]): [number, number][] {
-  const out: [number, number][] = [];
-  for (const h of [...hours].sort((a, b) => a - b)) {
-    const last = out[out.length - 1];
-    if (last && last[1] === h) last[1] = h + 1;
-    else out.push([h, h + 1]);
-  }
-  return out;
-}
-
 /**
  * Экран дня. Отдельной страницей (/day/…) или внутри раскрывающейся панели
  * на главной — тогда вместо «Главная» кнопка закрытия (onClose).
  */
-export function DayView({ data, day, onClose }: { data: CrewData; day: string; onClose?: () => void }) {
+export function DayView({ data, day, onClose, invite }: { data: CrewData; day: string; onClose?: () => void; invite?: boolean }) {
   const m = buildDay(data, day);
   const game = m.spotlightGame;
 
@@ -57,81 +44,25 @@ export function DayView({ data, day, onClose }: { data: CrewData; day: string; o
             )}
           </p>
           <div className="anim-rise mt-6" style={{ animationDelay: "calc(var(--base, 0s) + 0.24s)" }}>
-            <DayActions seed={m.editor} title={m.title} games={data.games} recent={data.recent} maxGames={MAX_DAY_GAMES} />
+            <JumpToMine marked={m.editor.initialHours.length > 0} />
           </div>
         </div>
       </section>
 
       <main className="relative isolate mx-auto max-w-6xl space-y-14 px-4 pb-24 sm:px-8">
         <AmbientTail />
-        {/* Шкала по часам */}
-        <section className="rounded-[24px] bg-glass p-4 backdrop-blur-sm sm:p-6">
-          <div className="grid grid-cols-[96px_minmax(0,1fr)] gap-x-3 sm:grid-cols-[150px_minmax(0,1fr)] sm:gap-x-5">
-            <div />
-            <div className="relative mb-3 h-4 text-[12px] text-faint tabular-nums">
-              {m.hourLabels.map((label, i) =>
-                i % 4 === 0 ? (
-                  <span
-                    key={i}
-                    className={`absolute ${i === 0 ? "" : i === DAY_HOURS ? "-translate-x-full" : "-translate-x-1/2"}`}
-                    style={{ left: pct(i) }}
-                  >
-                    {label}
-                  </span>
-                ) : null,
-              )}
-            </div>
-
-            <div>
-              {m.rows.map(({ member, state }) => (
-                <div key={member.id} className={`flex h-12 items-center gap-2.5 ${state === "free" ? "" : "opacity-45"}`}>
-                  <Avatar id={member.id} name={member.name} url={member.avatar_url} size={26} />
-                  <span className="truncate text-[14px] font-medium">{member.id === data.me.id ? "Ты" : member.name}</span>
-                </div>
-              ))}
-            </div>
-
-            <div className="relative">
-              {/* Сетка часов */}
-              <div className="pointer-events-none absolute inset-0 flex" aria-hidden="true">
-                {Array.from({ length: DAY_HOURS / 4 }, (_, i) => (
-                  <div key={i} className="flex-1 border-l border-line first:border-l-0" />
-                ))}
-              </div>
-              {m.best && (
-                <div
-                  className="pointer-events-none absolute -inset-y-1 rounded-xl bg-white/[0.06] shadow-[0_0_0_1.5px_#fff]"
-                  style={{ left: pct(m.best.from), width: pct(m.best.to - m.best.from) }}
-                />
-              )}
-              {m.rows.map(({ member, hours, state, note }, row) => (
-                <div key={member.id} className="flex h-12 items-center">
-                  <div className="relative h-4 w-full">
-                    {state === "free" &&
-                      runs(hours).map(([a, b]) => (
-                        <div
-                          key={a}
-                          className="anim-grow absolute inset-y-0 rounded-full"
-                          style={{
-                            left: pct(a),
-                            width: pct(b - a),
-                            background: memberColor(member.id),
-                            animationDelay: `calc(var(--base, 0s) + ${0.1 + row * 0.05}s)`,
-                          }}
-                          title={`${m.hourLabels[a]} – ${m.hourLabels[b]}`}
-                        />
-                      ))}
-                    {state !== "free" && (
-                      <span className={`absolute inset-y-0 left-0 flex items-center text-[13px] ${state === "silent" ? "text-faint italic" : "text-dim"}`}>
-                        {state === "busy" ? "не может" : note}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
+        <Timeline
+          key={day}
+          day={day}
+          hourLabels={m.hourLabels}
+          rows={m.rows}
+          meId={data.me.id}
+          initialGames={m.editor.initialGames}
+          games={data.games}
+          recent={data.recent}
+          maxGames={MAX_DAY_GAMES}
+          invite={invite}
+        />
 
         {/* Игры этого дня */}
         <section>

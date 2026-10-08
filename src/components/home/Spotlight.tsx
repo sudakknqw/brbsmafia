@@ -1,29 +1,26 @@
 "use client";
 
 import { DayLink } from "@/components/day/DayLink";
+import { useOpenDay } from "@/components/day/DayOverlay";
 import { useState, useTransition } from "react";
 import { clearDay, setBusy } from "@/app/actions";
 import { AvatarStack } from "@/components/Avatar";
-import { EditorSheet } from "@/components/EditorSheet";
 import { Ambient, HeroArt, Logo } from "@/components/GameArt";
 import { TopBar } from "@/components/TopBar";
 import { AmbientTail } from "@/components/AmbientTail";
 import { people } from "@/lib/words";
-import type { Game, Member } from "@/lib/types";
+import type { Member } from "@/lib/types";
 import type { EditorSeed, Spotlight as SpotlightModel } from "@/lib/views";
 
 type Props = {
   me: Member;
   spotlight: SpotlightModel;
   today: EditorSeed;
-  games: Game[];
-  recent: Game[];
-  maxGames: number;
 };
 
 /** Первый экран: арт игры, которую сейчас хотят больше всего, и ближайшее окно. */
-export function Spotlight({ me, spotlight, today, games, recent, maxGames }: Props) {
-  const [editing, setEditing] = useState(false);
+export function Spotlight({ me, spotlight, today }: Props) {
+  const openDay = useOpenDay();
   const [busy, setBusyOptimistic] = useState(today.busy);
   const [, start] = useTransition();
   const { game, when, freeCount } = spotlight;
@@ -76,7 +73,7 @@ export function Spotlight({ me, spotlight, today, games, recent, maxGames }: Pro
 
         <div className="anim-rise mt-7 flex flex-wrap gap-2.5" style={{ animationDelay: "0.45s" }}>
           <button
-            onClick={() => setEditing(true)}
+            onClick={(e) => openDay?.(today.day, e.currentTarget, true)}
             className="rounded-full bg-fg px-6 py-3 text-[16px] font-semibold text-ink transition hover:scale-[1.03] active:scale-[0.97]"
           >
             {marked ? "Изменить доступное время" : "Я свободен сегодня"}
@@ -94,16 +91,6 @@ export function Spotlight({ me, spotlight, today, games, recent, maxGames }: Pro
           </DayLink>
         </div>
       </div>
-
-      <EditorSheet
-        open={editing}
-        onClose={() => setEditing(false)}
-        seed={today}
-        title="Сегодня я свободен"
-        games={games}
-        recent={recent}
-        maxGames={maxGames}
-      />
     </section>
   );
 }

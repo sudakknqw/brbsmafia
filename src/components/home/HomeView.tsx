@@ -3,7 +3,6 @@ import { WeekRow } from "./WeekRow";
 import { StatusRow } from "./StatusRow";
 import { Library } from "./Library";
 import { buildHome, type CrewData } from "@/lib/views";
-import { MAX_DAY_GAMES } from "@/lib/limits";
 import { AmbientTail } from "@/components/AmbientTail";
 import { DayOverlayProvider } from "@/components/day/DayOverlay";
 
@@ -15,9 +14,6 @@ export function HomeView({ data }: { data: CrewData }) {
         me={data.me}
         spotlight={home.spotlight}
         today={home.today}
-        games={data.games}
-        recent={data.recent}
-        maxGames={MAX_DAY_GAMES}
       />
       <main className="relative isolate mx-auto max-w-6xl space-y-14 px-4 pb-24 sm:px-8">
         <AmbientTail />
