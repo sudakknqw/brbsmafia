@@ -1,7 +1,7 @@
 /** Заглушка, пока сервер готовит страницу: переход ощущается мгновенным. */
 export function PageSkeleton({ hero = "tall" }: { hero?: "tall" | "short" }) {
   return (
-    <div aria-busy="true" aria-label="Загрузка">
+    <div aria-busy="true" aria-label="Загрузка" className="page-skeleton">
       <div className={`flex flex-col justify-end px-4 pb-10 sm:px-8 ${hero === "tall" ? "min-h-[min(78svh,720px)]" : "min-h-[340px]"}`}>
         <div className="mx-auto w-full max-w-6xl space-y-4">
           <div className="skeleton h-5 w-44 rounded-full" />

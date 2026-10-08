@@ -52,11 +52,7 @@ export function Spotlight({ me, spotlight, today }: Props) {
       <TopBar me={me} />
 
       <div className="mx-auto mt-auto w-full max-w-6xl px-4 pb-10 sm:px-8 sm:pb-14">
-        <p className="anim-rise text-[17px] font-semibold" style={{ animationDelay: "0.15s" }}>
-          {when ?? (game ? "Сегодня" : "Пока тихо")}
-        </p>
-
-        <div className="anim-rise mt-3 mb-5" style={{ animationDelay: "0.25s" }}>
+        <div className="anim-rise mb-6" style={{ animationDelay: "0.2s" }}>
           {game ? (
             <Logo key={game.id} game={game} className="max-h-[130px] w-auto max-w-[min(80vw,560px)] sm:max-h-[190px]" />
           ) : (
@@ -68,10 +64,14 @@ export function Spotlight({ me, spotlight, today }: Props) {
           )}
         </div>
 
-        <div className="anim-rise flex items-center gap-3" style={{ animationDelay: "0.35s" }}>
+        {/* Когда и кто — одним блоком под логотипом */}
+        <div className="anim-rise" style={{ animationDelay: "0.32s" }}>
           <NamesHint names={spotlight.people.map((p) => p.name)} className="gap-3">
-            {spotlight.people.length > 0 && <AvatarStack people={spotlight.people} size={28} max={8} />}
-            <span className="text-[15px] text-dim">{caption}</span>
+            {spotlight.people.length > 0 && <AvatarStack people={spotlight.people} size={34} max={8} />}
+            <span className="flex flex-col leading-tight">
+              {when && <span className="text-[17px] font-semibold tabular-nums">{when}</span>}
+              <span className="mt-0.5 text-[15px] text-dim">{caption}</span>
+            </span>
           </NamesHint>
         </div>
 

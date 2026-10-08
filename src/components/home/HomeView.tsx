@@ -5,11 +5,13 @@ import { Library } from "./Library";
 import { buildHome, type CrewData } from "@/lib/views";
 import { AmbientTail } from "@/components/AmbientTail";
 import { DayOverlayProvider } from "@/components/day/DayOverlay";
+import { Splash } from "@/components/splash/Splash";
 
 export function HomeView({ data }: { data: CrewData }) {
   const home = buildHome(data);
   return (
     <DayOverlayProvider data={data}>
+      <Splash members={data.members} />
       <Spotlight
         me={data.me}
         spotlight={home.spotlight}
