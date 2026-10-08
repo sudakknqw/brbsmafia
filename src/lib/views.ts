@@ -2,7 +2,7 @@
 // поэтому этим же пользуется страница предпросмотра с выдуманными данными.
 import { dayStats, entryFor } from "./overlap";
 import { silentJoke } from "./jokes";
-import { addDays, dateLong, DAY_HOURS, dayNumber, formatTime, hourStart, weekdayLong, weekdayShort } from "./time";
+import { addDays, dateLong, DAY_HOURS, dayNumber, formatTime, hourStart, weekdayLong, weekdayShort, weekStart } from "./time";
 import type { DayEntry, Game, Member, Want } from "./types";
 
 export type CrewData = {
@@ -70,11 +70,13 @@ export function editorSeed(data: CrewData, day: string): EditorSeed {
 
 export function buildHome(data: CrewData) {
   const tz = data.me.timezone;
-  const week = Array.from({ length: 7 }, (_, i) => addDays(data.today, i));
+  // Неделя всегда с понедельника по воскресенье, сегодняшний день внутри неё «переезжает».
+  const monday = weekStart(data.today);
+  const week = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
   const days = week.map((day) => ({ day, ...dayStats(day, tz, data.members, data.entries) }));
 
   // Прожектор: ближайший день, где кто-то совпал; иначе — что хотят прямо сейчас.
-  const lit = days.find((d) => d.best);
+  const lit = days.find((d) => d.day >= data.today && d.best);
   let spotlight: Spotlight;
   if (lit?.best) {
     const inWindow = data.members.filter((m) => (lit.freeHours.get(m.id) ?? []).includes(lit.best!.from));
@@ -109,6 +111,7 @@ export function buildHome(data: CrewData) {
       counts: d.counts,
       peak: Math.max(...d.counts),
       isToday: d.day === data.today,
+      isPast: d.day < data.today,
       mine: entryFor(data.entries, data.me.id, d.day)?.status ?? null,
     })),
     statuses: data.members

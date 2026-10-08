@@ -13,9 +13,3 @@ export function plural(n: number, one: string, few: string, many: string): strin
   return many;
 }
 
-const GENITIVE = ["нуля", "одного", "двух", "трёх", "четырёх", "пяти", "шести", "семи", "восьми", "девяти", "десяти"];
-
-/** «из восьми» */
-export function ofTotal(n: number): string {
-  return `из ${GENITIVE[n] ?? n}`;
-}

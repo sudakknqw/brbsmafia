@@ -14,7 +14,6 @@ export function HomeView({ data }: { data: CrewData }) {
       <Spotlight
         me={data.me}
         spotlight={home.spotlight}
-        total={home.total}
         today={home.today}
         games={data.games}
         recent={data.recent}

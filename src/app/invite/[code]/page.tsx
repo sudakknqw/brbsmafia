@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { SignInButton } from "@/components/SignInButton";
+import { Wordmark } from "@/components/Wordmark";
 import { getViewer } from "@/lib/crew";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -15,7 +16,6 @@ export default async function InvitePage({ params }: PageProps<"/invite/[code]">
     .eq("code", code)
     .maybeSingle();
   const valid = invite && new Date(invite.expires_at) > new Date();
-  const { count } = await admin.from("members").select("*", { count: "exact", head: true });
   const inviter = (invite?.profiles as unknown as { name: string } | null)?.name;
 
   return (
@@ -23,9 +23,12 @@ export default async function InvitePage({ params }: PageProps<"/invite/[code]">
       <p className="text-sm text-dim">Приглашение</p>
 
       <div>
-        <h1 className="text-[clamp(52px,14vw,72px)] leading-[0.9] font-extrabold tracking-[-0.05em]">brbs mafia</h1>
+        <h1>
+          <Wordmark className="h-[clamp(34px,10vw,46px)]" />
+          <span className="sr-only">brbs mafia</span>
+        </h1>
         <p className="mt-3 text-[15px] text-dim">
-          {valid ? `Общее расписание и игры${count ? ` для ${count + 1} человек` : ""}` : "Ссылка устарела или неверная. Попроси новую у друзей."}
+          {valid ? "Общее расписание и игры для своих" : "Ссылка устарела или неверная. Попроси новую у друзей."}
         </p>
       </div>
 

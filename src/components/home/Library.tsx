@@ -40,7 +40,6 @@ export function Library({ games, wants, members, meId }: { games: Game[]; wants:
         wants.filter((w) => w.game_id === b.id).length - wants.filter((w) => w.game_id === a.id).length ||
         a.name.localeCompare(b.name),
     );
-  const myCount = live.filter((w) => w.user_id === meId).length;
 
   const toggle = (gameId: number) =>
     start(async () => {
@@ -75,7 +74,7 @@ export function Library({ games, wants, members, meId }: { games: Game[]; wants:
       <p className="mb-5 text-[15px] text-dim">
         {editing
           ? "Нажми на игру, чтобы убрать её у всех."
-          : `Нажми на обложку, и игра встанет в твой статус на сутки. Выбрано ${myCount} из ${MAX_WANTS}.`}
+          : "Нажми на обложку, и игра встанет в твой статус на сутки. Можно выбрать до трёх."}
       </p>
 
       {order.length === 0 ? (

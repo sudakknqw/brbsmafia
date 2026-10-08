@@ -8,14 +8,13 @@ import { EditorSheet } from "@/components/EditorSheet";
 import { Ambient, HeroArt, Logo } from "@/components/GameArt";
 import { TopBar } from "@/components/TopBar";
 import { AmbientTail } from "@/components/AmbientTail";
-import { ofTotal, people } from "@/lib/words";
+import { people } from "@/lib/words";
 import type { Game, Member } from "@/lib/types";
 import type { EditorSeed, Spotlight as SpotlightModel } from "@/lib/views";
 
 type Props = {
   me: Member;
   spotlight: SpotlightModel;
-  total: number;
   today: EditorSeed;
   games: Game[];
   recent: Game[];
@@ -23,7 +22,7 @@ type Props = {
 };
 
 /** Первый экран: арт игры, которую сейчас хотят больше всего, и ближайшее окно. */
-export function Spotlight({ me, spotlight, total, today, games, recent, maxGames }: Props) {
+export function Spotlight({ me, spotlight, today, games, recent, maxGames }: Props) {
   const [editing, setEditing] = useState(false);
   const [busy, setBusyOptimistic] = useState(today.busy);
   const [, start] = useTransition();
@@ -37,8 +36,8 @@ export function Spotlight({ me, spotlight, total, today, games, recent, maxGames
 
   const caption = when
     ? game
-      ? `Свободны ${people(freeCount)} ${ofTotal(total)}, больше всего хотят сюда`
-      : `Свободны ${people(freeCount)} ${ofTotal(total)}. Осталось выбрать игру`
+      ? `Свободны ${people(freeCount)}, больше всего хотят сюда`
+      : `Свободны ${people(freeCount)}. Осталось выбрать игру`
     : game && spotlight.people.length
       ? `Хотят ${people(spotlight.people.length)}. Осталось совпасть по времени`
       : "Отметь, когда свободен, и выбери, во что хочешь";
@@ -80,7 +79,7 @@ export function Spotlight({ me, spotlight, total, today, games, recent, maxGames
             onClick={() => setEditing(true)}
             className="rounded-full bg-fg px-6 py-3 text-[16px] font-semibold text-ink transition hover:scale-[1.03] active:scale-[0.97]"
           >
-            {marked ? "Изменить моё время" : "Я свободен сегодня"}
+            {marked ? "Изменить доступное время" : "Я свободен сегодня"}
           </button>
           {!marked && (
             <button

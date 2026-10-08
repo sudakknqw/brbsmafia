@@ -6,7 +6,7 @@ import { memberColor } from "@/lib/colors";
 import { MAX_DAY_GAMES } from "@/lib/limits";
 import { DAY_HOURS } from "@/lib/time";
 import { buildDay, type CrewData } from "@/lib/views";
-import { ofTotal, people } from "@/lib/words";
+import { people } from "@/lib/words";
 import { HeaderCard } from "./HeaderCard";
 import { AmbientTail } from "@/components/AmbientTail";
 import { CloseBar } from "./CloseBar";
@@ -50,7 +50,7 @@ export function DayView({ data, day, onClose }: { data: CrewData; day: string; o
             {m.best ? (
               <>
                 Все вместе с <b className="font-semibold tabular-nums">{m.hourLabels[m.best.from]}</b> до{" "}
-                <b className="font-semibold tabular-nums">{m.hourLabels[m.best.to]}</b>, свободны {people(m.best.count)} {ofTotal(m.total)}
+                <b className="font-semibold tabular-nums">{m.hourLabels[m.best.to]}</b>, свободны {people(m.best.count)}
               </>
             ) : (
               <span className="text-dim">Пока никто не совпал</span>

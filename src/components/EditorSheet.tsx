@@ -114,9 +114,7 @@ function EditorBody({ onClose, seed, title, games, recent, maxGames }: Props) {
 
         <div className="mt-7 mb-3 flex items-baseline justify-between">
           <h3 className="text-[17px] font-semibold">Во что хочешь</h3>
-          <span className="text-[13px] text-dim tabular-nums">
-            {picked.length} из {maxGames}
-          </span>
+          <span className="text-[13px] text-dim">до {maxGames === 5 ? "пяти" : maxGames}</span>
         </div>
         <div className="no-scrollbar -mx-5 flex gap-3 overflow-x-auto px-5 py-1.5">
           {choices.map((g) => {

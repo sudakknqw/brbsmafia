@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Avatar } from "./Avatar";
 import { InviteButton } from "./InviteButton";
+import { Wordmark } from "./Wordmark";
 import type { Member } from "@/lib/types";
 
 export function TopBar({ me, back }: { me: Member; back?: boolean }) {
@@ -17,8 +18,8 @@ export function TopBar({ me, back }: { me: Member; back?: boolean }) {
           Главная
         </Link>
       ) : (
-        <Link href="/" className="text-[19px] font-extrabold tracking-[-0.04em]">
-          brbs mafia
+        <Link href="/" aria-label="brbs mafia, на главную" className="transition hover:opacity-80">
+          <Wordmark className="h-[18px] sm:h-[21px]" />
         </Link>
       )}
       <div className="flex items-center gap-2.5">

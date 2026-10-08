@@ -27,13 +27,13 @@ export function DayActions({
         onClick={() => setOpen(true)}
         className="rounded-full bg-fg px-6 py-3 text-[16px] font-semibold text-ink transition hover:scale-[1.03] active:scale-[0.97]"
       >
-        {marked ? "Изменить моё время" : seed.busy ? "Всё-таки смогу" : "Отметить моё время"}
+        {marked ? "Изменить доступное время" : seed.busy ? "Всё-таки смогу" : "Отметить доступное время"}
       </button>
       <EditorSheet
         open={open}
         onClose={() => setOpen(false)}
         seed={seed}
-        title={`${title}: моё время`}
+        title={`${title}: доступное время`}
         games={games}
         recent={recent}
         maxGames={maxGames}

@@ -7,7 +7,7 @@ import type { DayEntry, Game, Member, Want } from "./types";
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
 import { WANT_TTL_HOURS } from "./limits";
-import { addDays, gamingDay } from "./time";
+import { addDays, gamingDay, weekStart } from "./time";
 import type { CrewData } from "./views";
 export { WANT_TTL_HOURS, MAX_WANTS, MAX_DAY_GAMES } from "./limits";
 
@@ -81,7 +81,7 @@ export async function loadCrewData(viewer: Awaited<ReturnType<typeof requireMemb
   const today = gamingDay(now, me.timezone);
   const [members, entries, games, wants, recentIds] = await Promise.all([
     loadMembers(supabase),
-    loadEntries(supabase, from ?? addDays(today, -1), to ?? addDays(today, 7)),
+    loadEntries(supabase, from ?? addDays(weekStart(today), -1), to ?? addDays(weekStart(today), 7)),
     loadGames(supabase),
     loadActiveWants(supabase),
     loadRecentGameIds(supabase, me.id),

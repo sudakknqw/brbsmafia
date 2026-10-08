@@ -46,7 +46,7 @@ export async function syncDiscord() {
 
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? "";
   const headline = best
-    ? `Лучшее окно: ${ts(hourStart(day, best.from, tz))}–${ts(hourStart(day, best.to, tz))} · свободны ${best.count} из ${members.length}`
+    ? `Лучшее окно: ${ts(hourStart(day, best.from, tz))}–${ts(hourStart(day, best.to, tz))} · свободны ${best.count}`
     : "Пока никто не совпал";
 
   const body = {

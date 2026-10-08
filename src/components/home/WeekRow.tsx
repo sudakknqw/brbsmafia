@@ -1,8 +1,12 @@
 import { DayLink } from "@/components/day/DayLink";
+import { ScrollToToday } from "./ScrollToToday";
 import { QuickFill } from "./QuickFill";
 import type { HomeModel } from "@/lib/views";
 
-/** Неделя плитками: в каждой — маленький график, сколько людей свободно по часам. */
+/**
+ * Неделя с понедельника по воскресенье. Сегодняшний день выделен рамкой
+ * и «переезжает» по плиткам, прошедшие дни приглушены.
+ */
 export function WeekRow({ week, total }: { week: HomeModel["week"]; total: number }) {
   return (
     <section>
@@ -10,12 +14,13 @@ export function WeekRow({ week, total }: { week: HomeModel["week"]; total: numbe
         <h2 className="text-[22px] font-semibold tracking-tight">Неделя</h2>
         <QuickFill />
       </div>
-      <div className="no-scrollbar -mx-4 flex snap-x scroll-px-4 gap-3 overflow-x-auto px-4 py-2 sm:-mx-8 sm:scroll-px-8 sm:px-8">
+      <ScrollToToday className="no-scrollbar -mx-4 flex snap-x scroll-px-4 gap-3 overflow-x-auto px-4 py-2 sm:-mx-8 sm:scroll-px-8 sm:px-8">
         {week.map((d) => (
           <DayLink
             key={d.day}
             day={d.day}
-            className={`tile w-[132px] shrink-0 snap-start rounded-2xl bg-glass p-3.5 sm:w-[148px] ${d.isToday ? "tile-on" : ""}`}
+            className={`tile w-[132px] shrink-0 snap-start rounded-2xl bg-glass p-3.5 sm:w-[148px] ${d.isToday ? "tile-on" : ""} ${d.isPast ? "opacity-40" : ""}`}
+            today={d.isToday}
           >
             <div className="flex items-baseline justify-between">
               <span className="text-[13px] text-dim">{d.isToday ? "Сегодня" : d.weekday}</span>
@@ -44,7 +49,7 @@ export function WeekRow({ week, total }: { week: HomeModel["week"]; total: numbe
             </p>
           </DayLink>
         ))}
-      </div>
+      </ScrollToToday>
     </section>
   );
 }

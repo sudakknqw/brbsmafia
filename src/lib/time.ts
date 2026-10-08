@@ -101,6 +101,11 @@ export function weekdayIndex(day: string): number {
   return utcDate(day).getUTCDay();
 }
 
+/** Понедельник недели, в которую попадает день. */
+export function weekStart(day: string): string {
+  return addDays(day, -((weekdayIndex(day) + 6) % 7));
+}
+
 /** Набор часов игрового дня (индексы 0..23) → слоты UTC. */
 export function hoursToSlots(day: string, hours: number[], tz: string): Slot[] {
   const sorted = [...new Set(hours)].filter((h) => h >= 0 && h < DAY_HOURS).sort((a, b) => a - b);
