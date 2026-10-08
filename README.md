@@ -12,11 +12,11 @@
 
    Потом так же запусти [`supabase/002_gatherings.sql`](supabase/002_gatherings.sql) — это сессии и итоги месяца, а затем [`supabase/003_game_art.sql`](supabase/003_game_art.sql) — свои картинки для игр.
 
-### 2. Discord-приложение (кнопка «Войти через Discord»)
-1. [discord.com/developers/applications](https://discord.com/developers/applications) → **New Application** → назови `brbs mafia`.
-2. Слева **OAuth2**: скопируй **Client ID** и **Client Secret** (Reset Secret).
-3. Там же в **Redirects** добавь: `https://<твой-проект>.supabase.co/auth/v1/callback`.
-4. В Supabase: **Authentication → Sign In / Providers → Discord** → включи и вставь Client ID и Secret.
+### 2. Telegram-бот и мини-приложение (вход)
+1. В [@BotFather](https://t.me/BotFather): `/newbot` → получишь **токен**. Затем `/newapp` → выбери бота, адрес `https://brbsmafia.vercel.app`, короткое имя `app` → ссылка вида `https://t.me/имя_бота/app`.
+2. Добавь бота в вашу группу. В компанию автоматически попадают участники этой группы.
+3. В Vercel: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_GROUP_ID` (ID группы, отрицательное число), `NEXT_PUBLIC_TELEGRAM_APP_URL` (ссылка из шага 1) → Redeploy.
+4. В Supabase запусти [`supabase/004_telegram.sql`](supabase/004_telegram.sql), затем `supabase/005_reminders.local.sql` (готовая копия с секретом) — это напоминания за час до игры.
 
 ### 3. Вебхук в канал
 В Discord: настройки канала → **Интеграции → Вебхуки → Новый вебхук** → **Копировать URL**.

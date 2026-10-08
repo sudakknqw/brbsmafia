@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useLayoutEffect, use
 import { DayView } from "./DayView";
 import type { CrewData } from "@/lib/views";
 import { addDays, weekStart } from "@/lib/time";
+import { haptic, telegram } from "@/lib/tg";
 
 type OpenDay = (day: string, origin: HTMLElement | null, invite?: boolean) => void;
 const DayOverlayContext = createContext<OpenDay | null>(null);
@@ -113,6 +114,7 @@ export function DayOverlayProvider({ data, children }: { data: CrewData; childre
   const nextDay = day && inWeek(addDays(day, 1)) ? addDays(day, 1) : null;
   const go = useCallback((d: string | null, to: 1 | -1) => {
     if (!d) return;
+    haptic("select");
     // Закрываться теперь нужно в плитку этого дня, а не в ту, из которой открывали.
     origin.current = document.querySelector<HTMLElement>(`a.tile[href="/day/${d}"]`) ?? origin.current;
     setDir(to);
@@ -120,6 +122,29 @@ export function DayOverlayProvider({ data, children }: { data: CrewData; childre
     setDay(d);
     panel.current?.scrollTo({ top: 0 });
   }, []);
+
+  // В Telegram у дня — системная кнопка «Назад» в шапке приложения.
+  useEffect(() => {
+    const app = telegram();
+    if (!app || !day) return;
+    app.BackButton.show();
+    app.BackButton.onClick(close);
+    return () => {
+      app.BackButton.offClick(close);
+      app.BackButton.hide();
+    };
+  }, [day, close]);
+
+  // Ссылка из напоминания (/?day=2026-10-10) сразу открывает этот день.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const wanted = url.searchParams.get("day");
+    if (!wanted || !/^\d{4}-\d{2}-\d{2}$/.test(wanted)) return;
+    url.searchParams.delete("day");
+    history.replaceState(history.state, "", url.pathname + url.search);
+    const timer = setTimeout(() => open(wanted, null));
+    return () => clearTimeout(timer);
+  }, [open]);
 
   // Кнопка «Назад»: закрываем с анимацией.
   useEffect(() => {

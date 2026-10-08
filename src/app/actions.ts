@@ -2,7 +2,6 @@
 
 import { after } from "next/server";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getViewer, loadEntries, loadMembers, MAX_DAY_GAMES, MAX_WANTS, WANT_TTL_HOURS } from "@/lib/crew";
 import { deleteGatheringMessage, syncDiscord, syncGatheringMessage } from "@/lib/discord";
@@ -314,17 +313,4 @@ export async function syncTimezone(tz: string) {
   await viewer.supabase.from("profiles").update({ timezone: tz }).eq("id", viewer.user.id);
   revalidatePath("/", "layout");
   return true;
-}
-
-export async function createInvite(): Promise<string> {
-  const { supabase, userId } = await member();
-  const { data, error } = await supabase.from("invites").insert({ created_by: userId }).select("code").single();
-  if (error) throw error;
-  return data.code;
-}
-
-export async function signOut() {
-  const viewer = await getViewer();
-  await viewer.supabase.auth.signOut();
-  redirect("/welcome");
 }

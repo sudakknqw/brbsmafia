@@ -7,6 +7,7 @@ import { NamesHint } from "./NamesHint";
 import type { GatheringView } from "@/lib/views";
 import { who } from "@/lib/words";
 import { DECLINE, JOIN, pick } from "@/lib/phrases";
+import { haptic } from "@/lib/tg";
 
 /** Кнопка «Начать сессию»: одно нажатие — сессия на лучшее окно дня и сообщение в Discord. */
 export function StartGathering({ day, gameId, gameName }: { day: string; gameId: number; gameName: string }) {
@@ -47,6 +48,7 @@ export function GatheringInfo({ gathering, meId }: { gathering: GatheringView; m
   const names = going.map((m) => (m.id === meId ? "ты" : m.name));
 
   const choose = (next: "in" | "out") => {
+    haptic(next === "in" ? "success" : "tap");
     const value = status === next ? null : next;
     setStatus(value);
     start(() => setGatheringStatus(gathering.id, value).catch(() => undefined));

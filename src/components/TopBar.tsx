@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { Avatar } from "./Avatar";
-import { InviteButton } from "./InviteButton";
 import { Wordmark } from "./Wordmark";
 import type { Member } from "@/lib/types";
 
@@ -23,7 +22,6 @@ export function TopBar({ me, back }: { me: Member; back?: boolean }) {
         </Link>
       )}
       <div className="flex items-center gap-2.5">
-        <InviteButton />
         <Link href="/profile" aria-label="Профиль" className="rounded-full transition hover:scale-105">
           <Avatar id={me.id} name={me.name} url={me.avatar_url} size={34} />
         </Link>

@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Onest } from "next/font/google";
+import Script from "next/script";
+import { TelegramSetup } from "@/components/telegram/TelegramSetup";
 import "./globals.css";
 
 const onest = Onest({ variable: "--font-onest", subsets: ["latin", "cyrillic"], weight: ["400", "500", "600", "800"] });
@@ -28,7 +30,12 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="ru" className={`${onest.variable} h-full`} suppressHydrationWarning>
-      <body className="min-h-full font-sans">{children}</body>
+      <body className="min-h-full font-sans">
+        {/* Мини-приложение Telegram: даёт данные о вошедшем, кнопку «Назад», вибрацию. */}
+        <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
+        <TelegramSetup />
+        {children}
+      </body>
     </html>
   );
 }

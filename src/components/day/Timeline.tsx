@@ -14,6 +14,7 @@ import { plural, who } from "@/lib/words";
 import { busyPhrase, noMatchPhrase } from "@/lib/phrases";
 import { NamesHint } from "@/components/NamesHint";
 import { FriendTime } from "@/components/FriendTime";
+import { haptic } from "@/lib/tg";
 
 type Row = { member: Member; hours: number[]; state: "free" | "busy" | "silent"; note: string | null };
 type Range = [number, number];
@@ -128,6 +129,7 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
       return;
     }
     setZoomAt(null);
+    haptic(anchor === null ? "select" : "success");
     if (anchor === null) {
       setAnchor(h);
       setHover(h);

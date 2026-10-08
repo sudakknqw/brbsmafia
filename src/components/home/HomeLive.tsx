@@ -6,6 +6,7 @@ import { AmbientTail } from "@/components/AmbientTail";
 import { DayOverlayProvider } from "@/components/day/DayOverlay";
 import { Splash } from "@/components/splash/Splash";
 import { MAX_WANTS } from "@/lib/limits";
+import { haptic } from "@/lib/tg";
 import type { Want } from "@/lib/types";
 import { buildHome, type CrewData } from "@/lib/views";
 import { Library } from "./Library";
@@ -34,6 +35,7 @@ export function HomeLive({ data, footer }: { data: CrewData; footer: ReactNode }
 
   const toggle = (gameId: number) =>
     start(async () => {
+      haptic("tap");
       applyToggle(gameId);
       await toggleWant(gameId).catch(() => undefined);
     });
