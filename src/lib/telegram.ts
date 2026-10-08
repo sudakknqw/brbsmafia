@@ -56,19 +56,55 @@ export async function isGroupMember(userId: number): Promise<boolean> {
 }
 
 /** Личное сообщение от бота. Молча не получается, если человек не разрешил боту писать. */
-export async function sendMessage(chatId: number, text: string, button?: { text: string; url: string }) {
-  const res = await fetch(`${API()}/sendMessage`, {
+/** Кнопка под сообщением: открыть мини-приложение или ответить боту (callback). */
+export type Button = { text: string; url: string } | { text: string; data: string };
+export type Keyboard = Button[][];
+
+const markup = (keyboard?: Keyboard) =>
+  keyboard
+    ? {
+        inline_keyboard: keyboard.map((row) =>
+          row.map((b) => ("url" in b ? { text: b.text, web_app: { url: b.url } } : { text: b.text, callback_data: b.data })),
+        ),
+      }
+    : undefined;
+
+async function call(method: string, body: Record<string, unknown>) {
+  const res = await fetch(`${API()}/${method}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      chat_id: chatId,
-      text,
-      parse_mode: "HTML",
-      link_preview_options: { is_disabled: true },
-      reply_markup: button ? { inline_keyboard: [[{ text: button.text, web_app: { url: button.url } }]] } : undefined,
-    }),
+    body: JSON.stringify(body),
+  }).catch(() => null);
+  return !!res?.ok;
+}
+
+export async function sendMessage(chatId: number, text: string, keyboard?: Keyboard) {
+  return call("sendMessage", {
+    chat_id: chatId,
+    text,
+    parse_mode: "HTML",
+    link_preview_options: { is_disabled: true },
+    reply_markup: markup(keyboard),
   });
-  return res.ok;
+}
+
+/** Поменять кнопки у уже отправленного сообщения (отметить выбранную). */
+export async function editKeyboard(chatId: number, messageId: number, keyboard: Keyboard) {
+  return call("editMessageReplyMarkup", { chat_id: chatId, message_id: messageId, reply_markup: markup(keyboard) });
+}
+
+/** Всплывающий ответ на нажатие кнопки. */
+export async function answerCallback(id: string, text: string) {
+  return call("answerCallbackQuery", { callback_query_id: id, text });
+}
+
+/**
+ * Секрет, который Telegram присылает в заголовке каждого запроса на вебхук.
+ * Выводится из токена бота, чтобы не заводить ещё одну переменную.
+ */
+export function webhookSecret() {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  return token ? createHmac("sha256", "brbs-webhook").update(token).digest("hex").slice(0, 48) : null;
 }
 
 export const escapeHtml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");

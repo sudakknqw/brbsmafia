@@ -7,6 +7,7 @@ import type { DayEntry, Game, Gathering, Member, Want } from "./types";
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
 import { WANT_TTL_HOURS } from "./limits";
+import { HISTORY_DAYS } from "./stats";
 import { addDays, gamingDay, weekStart } from "./time";
 import type { CrewData } from "./views";
 export { WANT_TTL_HOURS, MAX_WANTS, MAX_DAY_GAMES } from "./limits";
@@ -126,9 +127,11 @@ export async function loadGatherings(supabase: Supabase, from: string, to: strin
 /** Данные для итогов месяца: всё отмеченное и все сборы с начала месяца. */
 export async function loadMonth(supabase: Supabase, today: string) {
   const monthStart = today.slice(0, 8) + "01";
-  const [entries, gatherings] = await Promise.all([
+  const [entries, gatherings, history] = await Promise.all([
     loadEntries(supabase, monthStart, today),
     loadGatherings(supabase, monthStart, today),
+    // Для «лучшего дня недели»: 8 недель назад (и день сверху — время может перетекать через полночь).
+    loadEntries(supabase, addDays(today, -HISTORY_DAYS - 1), today),
   ]);
-  return { monthStart, entries, gatherings };
+  return { monthStart, entries, gatherings, history };
 }

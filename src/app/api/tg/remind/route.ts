@@ -1,13 +1,25 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { dayStats, entryFor } from "@/lib/overlap";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { escapeHtml, sendMessage } from "@/lib/telegram";
+import { escapeHtml, sendMessage, type Keyboard } from "@/lib/telegram";
 import { addDays, formatTime, gamingDay, hourStart } from "@/lib/time";
 import type { DayEntry, Game, Gathering, Member } from "@/lib/types";
 import { WANT_TTL_HOURS } from "@/lib/limits";
 
 type Person = Member & { telegram_id: number | null };
-type Reminder = { key: string; start: Date; game: string; people: Person[] };
+type Reminder = {
+  key: string;
+  start: Date;
+  game: string;
+  people: Person[];
+  /** Данные для кнопок «Иду» / «Без меня» (разбирает /api/tg/webhook). */
+  answer: { in: string; out: string };
+  /** Уже отмечены «в деле» — у них сразу стоит галочка. */
+  marked: boolean;
+};
+
+// Вечерний пинок: в это время по часам человека, если он ещё не отметил день.
+const NUDGE_HOUR = 18;
 
 const HOUR = 3600_000;
 
@@ -15,6 +27,10 @@ const HOUR = 3600_000;
  * Напоминание за час: вызывается планировщиком Supabase каждые 10 минут.
  * Если в ближайший час начинается сессия (или общее окно, если сессии нет),
  * каждому, кто идёт, бот пишет «<b>Игра</b> в 21:00 / Идут: …» — по его часам.
+ * Под сообщением — «Иду» / «Без меня»: ответить можно, не открывая приложение.
+ *
+ * Там же — вечерний пинок: кто к 18:00 по своим часам не отметил сегодняшний день
+ * (а кто-то из компании уже отметил), получает одно личное сообщение.
  */
 export async function GET(request: NextRequest) {
   const secret = process.env.CRON_SECRET;
@@ -51,7 +67,14 @@ export async function GET(request: NextRequest) {
   // Сессии: идут те, кто нажал «Я в деле».
   for (const g of gatherings) {
     const going = g.members.filter((m) => m.status === "in").map((m) => people.find((p) => p.id === m.user_id));
-    reminders.push({ key: `session:${g.id}`, start: new Date(g.starts_at), game: g.game_name, people: going.filter((p): p is Person => !!p) });
+    reminders.push({
+      key: `session:${g.id}`,
+      start: new Date(g.starts_at),
+      game: g.game_name,
+      people: going.filter((p): p is Person => !!p),
+      answer: { in: `s:in:${g.id}`, out: `s:out:${g.id}` },
+      marked: true,
+    });
   }
 
   // Общее окно без сессии: идут все, кто свободен в его начале.
@@ -70,8 +93,16 @@ export async function GET(request: NextRequest) {
     for (const p of going) entryFor(entries, p.id, day)?.game_ids.forEach((id) => score.set(id, (score.get(id) ?? 0) + 2));
     for (const w of wants) if (going.some((p) => p.id === w.user_id)) score.set(w.game_id, (score.get(w.game_id) ?? 0) + 1);
     const topId = [...score.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
-    const game = games.find((g) => g.id === topId)?.name ?? "Катка";
-    reminders.push({ key: `window:${start.toISOString()}`, start, game, people: going });
+    const top = games.find((g) => g.id === topId);
+    const ref = `${Math.floor(start.getTime() / 1000)}:${top?.id ?? 0}`;
+    reminders.push({
+      key: `window:${start.toISOString()}`,
+      start,
+      game: top?.name ?? "Катка",
+      people: going,
+      answer: { in: `w:in:${ref}`, out: `w:out:${ref}` },
+      marked: false,
+    });
   }
 
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? "";
@@ -87,9 +118,35 @@ export async function GET(request: NextRequest) {
       if (!p.telegram_id) continue;
       const text = `<b>${escapeHtml(r.game)}</b> в ${formatTime(r.start, p.timezone)}\nИдут: ${names}`;
       const day = gamingDay(r.start, p.timezone);
-      if (await sendMessage(p.telegram_id, text, site ? { text: "Открыть", url: `${site}/?day=${day}` } : undefined)) sent++;
+      const keyboard: Keyboard = [
+        [
+          { text: r.marked ? "✓ Иду" : "Иду", data: r.answer.in },
+          { text: "Без меня", data: r.answer.out },
+        ],
+      ];
+      if (site) keyboard.push([{ text: "Открыть", url: `${site}/?day=${day}` }]);
+      if (await sendMessage(p.telegram_id, text, keyboard)) sent++;
     }
   }
 
-  return NextResponse.json({ ok: true, reminders: reminders.length, sent });
+  // Пинок молчунам: один раз за день, только лично.
+  let nudged = 0;
+  for (const p of people) {
+    if (!p.telegram_id) continue;
+    const hour = Number(new Intl.DateTimeFormat("en-GB", { timeZone: p.timezone, hour: "2-digit", hourCycle: "h23" }).format(now));
+    if (hour !== NUDGE_HOUR) continue;
+    const day = gamingDay(now, p.timezone);
+    if (entryFor(entries, p.id, day)) continue;
+    const marked = people.filter((o) => o.id !== p.id && entryFor(entries, o.id, day)?.status === "free");
+    if (!marked.length) continue; // никто не планирует — и пинать незачем
+
+    const { error } = await db.from("reminders_sent").insert({ key: `nudge:${p.id}:${day}` });
+    if (error) continue;
+    const text = `Сегодня играем? Время на вечер ещё не отмечено.\nУже отметились: ${marked.map((o) => escapeHtml(o.name)).join(", ")}`;
+    const keyboard: Keyboard = [[{ text: "Сегодня NO", data: `n:no:${day}` }]];
+    if (site) keyboard.unshift([{ text: "Отметить время", url: `${site}/?day=${day}` }]);
+    if (await sendMessage(p.telegram_id, text, keyboard)) nudged++;
+  }
+
+  return NextResponse.json({ ok: true, reminders: reminders.length, sent, nudged });
 }
