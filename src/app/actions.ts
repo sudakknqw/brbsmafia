@@ -170,6 +170,19 @@ export async function addGame(input: { steamAppId?: number; name: string }): Pro
   return id;
 }
 
+const ART_FIELDS = ["cover_url", "hero_url", "header_url", "logo_url"] as const;
+type ArtField = (typeof ART_FIELDS)[number];
+
+/** Своя картинка игры (или null — вернуть картинку из Steam). Только из нашего хранилища. */
+export async function setGameArt(gameId: number, field: ArtField, url: string | null) {
+  const { supabase } = await member();
+  if (!ART_FIELDS.includes(field)) return;
+  const storage = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/games/${gameId}/`;
+  if (url !== null && !url.startsWith(storage)) return;
+  await supabase.from("games").update({ [field]: url }).eq("id", gameId);
+  changed();
+}
+
 export async function deleteGame(gameId: number) {
   const { supabase } = await member();
   await supabase.from("games").delete().eq("id", gameId);

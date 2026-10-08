@@ -1,7 +1,8 @@
 "use client";
 
-import { useOptimistic, useState, useTransition } from "react";
-import { deleteGame, toggleWant } from "@/app/actions";
+import { useState, useTransition } from "react";
+import { deleteGame } from "@/app/actions";
+import { GameArtEditor } from "@/components/GameArtEditor";
 import { AvatarStack } from "@/components/Avatar";
 import { NamesHint } from "@/components/NamesHint";
 import { Cover } from "@/components/GameArt";
@@ -9,23 +10,33 @@ import { GameSearch } from "@/components/GameSearch";
 import { Sheet } from "@/components/Sheet";
 import type { Game, Member, Want } from "@/lib/types";
 
-const MAX_WANTS = 3;
 
-/** Общая библиотека. Нажатие на обложку ставит игру в твой статус на сутки. */
-export function Library({ games, wants, members, meId }: { games: Game[]; wants: Want[]; members: Member[]; meId: string }) {
+/**
+ * Общая библиотека. Нажатие на обложку ставит игру в твой статус на сутки.
+ * Хотелки «живые» (меняются сразу при нажатии) и общие со всей главной — см. HomeLive.
+ */
+export function Library({
+  games,
+  wants,
+  serverWants,
+  members,
+  meId,
+  onToggle,
+}: {
+  games: Game[];
+  wants: Want[];
+  serverWants: Want[];
+  members: Member[];
+  meId: string;
+  onToggle: (gameId: number) => void;
+}) {
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [artGameId, setArtGameId] = useState<number | null>(null);
   const [hidden, setHidden] = useState<number[]>([]);
   const [, start] = useTransition();
-  const [live, toggleOptimistic] = useOptimistic(wants, (state, gameId: number) => {
-    const mine = state.filter((w) => w.user_id === meId).sort((a, b) => a.created_at.localeCompare(b.created_at));
-    if (mine.some((w) => w.game_id === gameId)) return state.filter((w) => !(w.user_id === meId && w.game_id === gameId));
-    const drop = mine.length >= MAX_WANTS ? mine[0].game_id : null;
-    return [
-      ...state.filter((w) => !(w.user_id === meId && w.game_id === drop)),
-      { user_id: meId, game_id: gameId, created_at: new Date().toISOString() },
-    ];
-  });
+  const live = wants;
+  const artGame = games.find((g) => g.id === artGameId) ?? null;
 
   const wantersOf = (gameId: number) =>
     live
@@ -38,18 +49,15 @@ export function Library({ games, wants, members, meId }: { games: Game[]; wants:
     .filter((g) => !hidden.includes(g.id))
     .sort(
       (a, b) =>
-        wants.filter((w) => w.game_id === b.id).length - wants.filter((w) => w.game_id === a.id).length ||
+        serverWants.filter((w) => w.game_id === b.id).length - serverWants.filter((w) => w.game_id === a.id).length ||
         a.name.localeCompare(b.name),
     );
 
-  const toggle = (gameId: number) =>
-    start(async () => {
-      toggleOptimistic(gameId);
-      await toggleWant(gameId);
-    });
+  const toggle = onToggle;
 
   const remove = (game: Game) => {
     if (!confirm(`Убрать «${game.name}» из библиотеки у всех?`)) return;
+    setArtGameId(null);
     setHidden((h) => [...h, game.id]);
     start(() => deleteGame(game.id));
   };
@@ -74,7 +82,7 @@ export function Library({ games, wants, members, meId }: { games: Game[]; wants:
       </div>
       <p className="mb-5 text-[15px] text-dim">
         {editing
-          ? "Нажми на игру, чтобы убрать её у всех."
+          ? "Нажми на игру, чтобы поменять её картинки или убрать из библиотеки."
           : "Нажми на обложку, и игра встанет в твой статус на сутки. Можно выбрать до трёх."}
       </p>
 
@@ -94,9 +102,9 @@ export function Library({ games, wants, members, meId }: { games: Game[]; wants:
             return (
               <div key={g.id}>
                 <button
-                  onClick={() => (editing ? remove(g) : toggle(g.id))}
+                  onClick={() => (editing ? setArtGameId(g.id) : toggle(g.id))}
                   aria-pressed={editing ? undefined : mine}
-                  aria-label={editing ? `Убрать ${g.name}` : g.name}
+                  aria-label={editing ? `Изменить ${g.name}` : g.name}
                   className={`tile relative block w-full rounded-[10px] ${mine && !editing ? "tile-on" : ""} ${editing ? "opacity-70" : ""}`}
                 >
                   <Cover key={g.id} game={g} />
@@ -108,9 +116,9 @@ export function Library({ games, wants, members, meId }: { games: Game[]; wants:
                     </span>
                   )}
                   {editing && (
-                    <span className="anim-pop absolute top-2 right-2 flex size-6 items-center justify-center rounded-full bg-bad text-white">
-                      <svg width="10" height="2" aria-hidden="true">
-                        <rect width="10" height="2" rx="1" fill="currentColor" />
+                    <span className="anim-pop absolute top-2 right-2 flex size-7 items-center justify-center rounded-full bg-fg text-ink">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4" />
                       </svg>
                     </span>
                   )}
@@ -132,7 +140,16 @@ export function Library({ games, wants, members, meId }: { games: Game[]; wants:
       )}
 
       <Sheet open={adding} onClose={() => setAdding(false)} title="Добавить игру">
-        <GameSearch onPick={() => setAdding(false)} />
+        <GameSearch
+          onPick={(id, fromSteam) => {
+            setAdding(false);
+            if (!fromSteam) setArtGameId(id);
+          }}
+        />
+      </Sheet>
+
+      <Sheet open={!!artGame} onClose={() => setArtGameId(null)} title={artGame?.name ?? ""}>
+        {artGame && <GameArtEditor key={artGame.id} game={artGame} onRemove={() => remove(artGame)} />}
       </Sheet>
     </section>
   );

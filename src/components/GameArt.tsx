@@ -1,19 +1,28 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { plateColor, steamArt } from "@/lib/steam";
+import { gameArt, plateColor } from "@/lib/steam";
 import type { Game } from "@/lib/types";
 
-/** Перебирает картинки по очереди, пока какая-нибудь не загрузится. */
+/**
+ * Перебирает картинки по очереди, пока какая-нибудь не загрузится.
+ * Новый список (например, загрузили свою обложку) — начинаем сначала.
+ */
 function useFallback(sources: string[]) {
-  const [index, setIndex] = useState(0);
-  return { src: sources[index] as string | undefined, failed: () => setIndex((i) => i + 1), index };
+  const key = sources.join("|");
+  const [state, setState] = useState({ key, index: 0 });
+  const index = state.key === key ? state.index : 0;
+  return {
+    src: sources[index] as string | undefined,
+    index,
+    failed: () => setState({ key, index: index + 1 }),
+  };
 }
 
 /** Вертикальная обложка, как в библиотеке Steam. */
 export function Cover({ game, className = "" }: { game: Game; className?: string }) {
-  const art = game.steam_appid ? steamArt(game.steam_appid) : null;
-  const { src, failed, index } = useFallback(art ? [art.portrait, art.header] : []);
+  const art = gameArt(game);
+  const { src, failed, index } = useFallback([...art.portrait, ...art.portraitFallback]);
 
   if (!src) {
     return (
@@ -25,7 +34,7 @@ export function Cover({ game, className = "" }: { game: Game; className?: string
       </div>
     );
   }
-  const header = index === 1;
+  const header = index >= art.portrait.length;
   return (
     <div className={`relative aspect-[2/3] overflow-hidden rounded-[10px] bg-glass ${className}`}>
       {header && (
@@ -46,8 +55,8 @@ export function Cover({ game, className = "" }: { game: Game; className?: string
 
 /** Широкий арт на фон. */
 export function HeroArt({ game, className = "" }: { game: Game; className?: string }) {
-  const art = game.steam_appid ? steamArt(game.steam_appid) : null;
-  const { src, failed, index } = useFallback(art ? [art.hero, art.header] : []);
+  const art = gameArt(game);
+  const { src, failed, index } = useFallback([...art.hero, ...art.heroFallback]);
 
   if (!src) return <div style={{ background: plateColor(game.name) }} className={className} />;
   return (
@@ -58,15 +67,14 @@ export function HeroArt({ game, className = "" }: { game: Game; className?: stri
       alt=""
       aria-hidden
       onError={failed}
-      className={`object-cover ${index === 1 ? "scale-110 blur-md" : ""} ${className}`}
+      className={`object-cover ${index >= art.hero.length ? "scale-110 blur-md" : ""} ${className}`}
     />
   );
 }
 
 /** Логотип игры; если его нет — название крупным шрифтом. */
 export function Logo({ game, className = "" }: { game: Game; className?: string }) {
-  const art = game.steam_appid ? steamArt(game.steam_appid) : null;
-  const { src, failed } = useFallback(art ? [art.logo] : []);
+  const { src, failed } = useFallback(gameArt(game).logo);
 
   if (!src) {
     return <p className={`text-[clamp(34px,7vw,64px)] leading-[0.95] font-extrabold tracking-[-0.03em] text-balance ${className}`}>{game.name}</p>;
@@ -82,7 +90,8 @@ export function Logo({ game, className = "" }: { game: Game; className?: string 
  * Steam отдаёт картинки с CORS, поэтому их можно прочитать в canvas.
  */
 export function Ambient({ game }: { game: Game | null }) {
-  const appid = game?.steam_appid;
+  const art = game ? gameArt(game) : null;
+  const sample = art ? [...art.header, ...art.hero][0] : undefined;
   const fallback = game ? plateColor(game.name) : null;
 
   useEffect(() => {
@@ -95,13 +104,13 @@ export function Ambient({ game }: { game: Game | null }) {
       alive = false;
       if (previous) root.style.setProperty("--ambient", previous);
     };
-    if (!appid) {
+    if (!sample) {
       if (fallback) set(hexToRgb(fallback));
       return restore;
     }
     const img = new Image();
     img.crossOrigin = "anonymous";
-    img.src = steamArt(appid).header;
+    img.src = sample;
     img.onload = () => {
       try {
         const canvas = document.createElement("canvas");
@@ -128,7 +137,7 @@ export function Ambient({ game }: { game: Game | null }) {
       }
     };
     return restore;
-  }, [appid, fallback]);
+  }, [sample, fallback]);
 
   return null;
 }

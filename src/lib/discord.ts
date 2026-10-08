@@ -2,6 +2,7 @@ import "server-only";
 import { createAdminClient } from "./supabase/admin";
 import { dayStats, entryFor } from "./overlap";
 import { busyPhrase, noMatchPhrase, silentPhrase } from "./phrases";
+import { gameArt } from "./steam";
 import { addDays, dateLong, gamingDay, hourStart, weekdayLong } from "./time";
 import type { DayEntry, Game, Member } from "./types";
 
@@ -127,7 +128,7 @@ export async function syncGatheringMessage(gatheringId: number, mentionIds: stri
   const ids = [...new Set([g.created_by, ...g.members.map((m) => m.user_id), ...mentionIds].filter(Boolean))] as string[];
   const [{ data: profiles }, { data: game }] = await Promise.all([
     db.from("profiles").select("id, name, discord_id").in("id", ids),
-    g.game_id ? db.from("games").select("steam_appid").eq("id", g.game_id).maybeSingle() : Promise.resolve({ data: null }),
+    g.game_id ? db.from("games").select("*").eq("id", g.game_id).maybeSingle<Game>() : Promise.resolve({ data: null }),
   ]);
   const byId = new Map((profiles ?? []).map((p) => [p.id as string, p as { id: string; name: string; discord_id: string | null }]));
   const names = (status: "in" | "out") =>
@@ -150,7 +151,7 @@ export async function syncGatheringMessage(gatheringId: number, mentionIds: stri
           `${ts(start)} – ${ts(new Date(g.ends_at))}, <t:${Math.floor(start.getTime() / 1000)}:R>\n\n` +
           `**В деле:** ${names("in") || "пока никого"}` +
           (names("out") ? `\n**Не пойдут:** ${names("out")}` : ""),
-        image: game?.steam_appid ? { url: `https://shared.steamstatic.com/store_item_assets/steam/apps/${game.steam_appid}/header.jpg` } : undefined,
+        image: game && gameArt(game).header[0] ? { url: gameArt(game).header[0] } : undefined,
       },
     ],
     // Пингуем только при создании; правки сообщения никого не дёргают.

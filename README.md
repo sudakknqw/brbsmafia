@@ -10,7 +10,7 @@
    Внизу появится `code` — это твоё первое приглашение. Скопируй его.
 3. **Project Settings → API**: скопируй `Project URL`, `anon public` и `service_role` ключи.
 
-   Потом так же запусти [`supabase/002_gatherings.sql`](supabase/002_gatherings.sql) — это сессии и итоги месяца.
+   Потом так же запусти [`supabase/002_gatherings.sql`](supabase/002_gatherings.sql) — это сессии и итоги месяца, а затем [`supabase/003_game_art.sql`](supabase/003_game_art.sql) — свои картинки для игр.
 
 ### 2. Discord-приложение (кнопка «Войти через Discord»)
 1. [discord.com/developers/applications](https://discord.com/developers/applications) → **New Application** → назови `brbs mafia`.

@@ -13,6 +13,8 @@ export type CrewData = {
   wants: Want[];
   recent: Game[];
   gatherings: Gathering[];
+  /** Игра для пустой шапки, выбранная на сервере случайно (браузер не пересчитывает). */
+  fallbackGameId: number | null;
   now: Date;
   today: string;
 };
@@ -101,9 +103,9 @@ function leadingGame(data: CrewData, day: string, peopleIds: string[]): Game | n
   return data.games.find((g) => g.id === best?.[0]) ?? null;
 }
 
-/** Если никто ничего не выбрал — случайная игра из библиотеки при каждом открытии. */
+/** Если никто ничего не выбрал — случайная игра из библиотеки (выбрана на сервере). */
 function anyGame(data: CrewData): Game | null {
-  return data.games.length ? data.games[Math.floor(Math.random() * data.games.length)] : null;
+  return data.games.find((g) => g.id === data.fallbackGameId) ?? data.games[0] ?? null;
 }
 
 export function editorSeed(data: CrewData, day: string): EditorSeed {

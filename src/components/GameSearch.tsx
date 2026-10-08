@@ -10,7 +10,7 @@ type Result = { appid: number; name: string };
  * Поиск игры в Steam. Найденная игра добавляется в общую библиотеку
  * (если её там ещё нет) и сразу отдаётся наружу через onPick.
  */
-export function GameSearch({ onPick }: { onPick: (gameId: number) => void }) {
+export function GameSearch({ onPick }: { onPick: (gameId: number, fromSteam: boolean) => void }) {
   const [term, setTerm] = useState("");
   const [found, setFound] = useState<{ q: string; items: Result[] }>({ q: "", items: [] });
   const [pending, start] = useTransition();
@@ -39,7 +39,7 @@ export function GameSearch({ onPick }: { onPick: (gameId: number) => void }) {
   const pick = (input: { steamAppId?: number; name: string }) =>
     start(async () => {
       const id = await addGame(input);
-      if (id) onPick(id);
+      if (id) onPick(id, !!input.steamAppId);
     });
 
   return (

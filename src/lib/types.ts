@@ -11,6 +11,11 @@ export type Game = {
   id: number;
   steam_appid: number | null;
   name: string;
+  // Свои картинки (003_game_art.sql); если пусто — берём из Steam.
+  cover_url?: string | null;
+  hero_url?: string | null;
+  header_url?: string | null;
+  logo_url?: string | null;
 };
 
 export type DayEntry = {

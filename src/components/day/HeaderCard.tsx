@@ -1,13 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { plateColor, steamArt } from "@/lib/steam";
+import { gameArt, plateColor } from "@/lib/steam";
 import type { Game } from "@/lib/types";
 
-/** Горизонтальная шапка игры из Steam. */
+/** Горизонтальная шапка игры: своя, из Steam или цветная плашка. */
 export function HeaderCard({ game }: { game: Game }) {
-  const [failed, setFailed] = useState(!game.steam_appid);
-  if (failed) {
+  const sources = gameArt(game).header;
+  const key = sources.join("|");
+  const [failed, setFailed] = useState({ key, index: 0 });
+  const index = failed.key === key ? failed.index : 0;
+  const src = sources[index];
+
+  if (!src) {
     return (
       <div
         style={{ background: plateColor(game.name) }}
@@ -20,10 +25,10 @@ export function HeaderCard({ game }: { game: Game }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={steamArt(game.steam_appid!).header}
+      src={src}
       alt={game.name}
       loading="lazy"
-      onError={() => setFailed(true)}
+      onError={() => setFailed({ key, index: index + 1 })}
       className="aspect-[460/215] w-full rounded-xl bg-glass object-cover"
     />
   );

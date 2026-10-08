@@ -51,7 +51,8 @@ export async function loadEntries(supabase: Supabase, from: string, to: string):
 }
 
 export async function loadGames(supabase: Supabase): Promise<Game[]> {
-  const { data } = await supabase.from("games").select("id, steam_appid, name").order("created_at");
+  // «*», а не список колонок: так работает и до, и после миграции со своими картинками.
+  const { data } = await supabase.from("games").select("*").order("created_at");
   return (data ?? []) as Game[];
 }
 
@@ -90,7 +91,8 @@ export async function loadCrewData(viewer: Awaited<ReturnType<typeof requireMemb
     loadGatherings(supabase, rangeFrom, rangeTo),
   ]);
   const recent = recentIds.map((id) => games.find((g) => g.id === id)).filter((g): g is Game => !!g);
-  return { me, members, entries, games, wants, recent, gatherings, now, today };
+  const fallbackGameId = games.length ? games[Math.floor(Math.random() * games.length)].id : null;
+  return { me, members, entries, games, wants, recent, gatherings, fallbackGameId, now, today };
 }
 
 /** Сборы за период. Если таблиц ещё нет (миграцию не запускали) — просто пусто. */
