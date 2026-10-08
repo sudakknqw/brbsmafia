@@ -3,6 +3,7 @@
 import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getViewer, loadEntries, loadMembers, MAX_DAY_GAMES, MAX_WANTS, WANT_TTL_HOURS } from "@/lib/crew";
 import { deleteGatheringMessage, syncDiscord, syncGatheringMessage } from "@/lib/discord";
 import { dayStats } from "@/lib/overlap";
@@ -173,19 +174,39 @@ export async function addGame(input: { steamAppId?: number; name: string }): Pro
 const ART_FIELDS = ["cover_url", "hero_url", "header_url", "logo_url"] as const;
 type ArtField = (typeof ART_FIELDS)[number];
 
-/** Своя картинка игры (или null — вернуть картинку из Steam). Только из нашего хранилища. */
+const artRoot = () => `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/games/`;
+
+/**
+ * Своя картинка игры (или null — вернуть картинку из Steam). Только из нашего хранилища.
+ * Прошлая своя картинка этой игры удаляется из хранилища — чтобы не копились.
+ */
 export async function setGameArt(gameId: number, field: ArtField, url: string | null) {
   const { supabase } = await member();
   if (!ART_FIELDS.includes(field)) return;
-  const storage = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/games/${gameId}/`;
-  if (url !== null && !url.startsWith(storage)) return;
-  await supabase.from("games").update({ [field]: url }).eq("id", gameId);
+  const folder = `${artRoot()}${gameId}/`;
+  if (url !== null && !url.startsWith(folder)) return;
+
+  const { data: before } = await supabase.from("games").select(field).eq("id", gameId).maybeSingle<Record<ArtField, string | null>>();
+  const { error } = await supabase.from("games").update({ [field]: url }).eq("id", gameId);
+  if (error) return;
+
+  const old = before?.[field];
+  // Удаляем служебным ключом: правила хранилища не дают обычному входу удалять без права чтения списка.
+  // Путь проверен выше — это старая картинка именно этой игры.
+  if (old && old !== url && old.startsWith(folder)) {
+    await createAdminClient().storage.from("games").remove([old.slice(artRoot().length)]);
+  }
   changed();
 }
 
+/** Убрать игру у всех — вместе с её папкой своих картинок. */
 export async function deleteGame(gameId: number) {
   const { supabase } = await member();
-  await supabase.from("games").delete().eq("id", gameId);
+  const { error } = await supabase.from("games").delete().eq("id", gameId);
+  if (error) return;
+  const bucket = createAdminClient().storage.from("games");
+  const { data: files } = await bucket.list(String(gameId));
+  if (files?.length) await bucket.remove(files.map((f) => `${gameId}/${f.name}`));
   changed();
 }
 
