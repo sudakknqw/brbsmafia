@@ -1,7 +1,7 @@
 // Из сырых данных — то, что показывают экраны. Без обращения к базе,
 // поэтому этим же пользуется страница предпросмотра с выдуманными данными.
 import { dayStats, entryFor } from "./overlap";
-import { noMatchPhrase, pick, silentPhrase } from "./phrases";
+import { noMatchPhrase, silentPhrase } from "./phrases";
 import { addDays, dateLong, DAY_HOURS, dayNumber, dayWindow, formatTime, hourStart, weekdayLong, weekdayShort, weekStart } from "./time";
 import type { DayEntry, Game, Gathering, Member, Want } from "./types";
 
@@ -101,9 +101,9 @@ function leadingGame(data: CrewData, day: string, peopleIds: string[]): Game | n
   return data.games.find((g) => g.id === best?.[0]) ?? null;
 }
 
-/** Если никто ничего не выбрал — любая игра из библиотеки, одна и та же весь день. */
+/** Если никто ничего не выбрал — случайная игра из библиотеки при каждом открытии. */
 function anyGame(data: CrewData): Game | null {
-  return data.games.length ? pick(data.games, data.today) : null;
+  return data.games.length ? data.games[Math.floor(Math.random() * data.games.length)] : null;
 }
 
 export function editorSeed(data: CrewData, day: string): EditorSeed {

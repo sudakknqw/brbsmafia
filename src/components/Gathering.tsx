@@ -8,7 +8,7 @@ import type { GatheringView } from "@/lib/views";
 import { who } from "@/lib/words";
 import { DECLINE, JOIN, pick } from "@/lib/phrases";
 
-/** Кнопка «Собрать пати»: одно нажатие — сбор на лучшее окно дня и сообщение в Discord. */
+/** Кнопка «Начать сессию»: одно нажатие — сессия на лучшее окно дня и сообщение в Discord. */
 export function StartGathering({ day, gameId, gameName }: { day: string; gameId: number; gameName: string }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -20,21 +20,21 @@ export function StartGathering({ day, gameId, gameName }: { day: string; gameId:
         onClick={() =>
           start(async () => {
             setError(null);
-            const res = await startGathering(day, gameId).catch(() => ({ error: "Не получилось начать сбор. Попробуй ещё раз." }));
+            const res = await startGathering(day, gameId).catch(() => ({ error: "Не получилось начать сессию. Попробуй ещё раз." }));
             if (res.error) setError(res.error);
           })
         }
-        title={`Сбор в ${gameName} на общее окно, с упоминанием в Discord`}
+        title={`Сессия в ${gameName} на общее окно, с упоминанием в Discord`}
         className="rounded-full bg-glass2 px-5 py-3 text-[16px] font-medium backdrop-blur-md transition hover:bg-white/20 active:scale-[0.97] disabled:opacity-60"
       >
-        {pending ? "Собираем…" : "Собрать пати"}
+        {pending ? "Создаём…" : "Начать сессию"}
       </button>
       {error && <span className="mt-2 text-[13px] text-bad">{error}</span>}
     </span>
   );
 }
 
-/** Идущий сбор: кто собрал, когда, кто в деле — и свои кнопки. */
+/** Идущая сессия: кто позвал, когда, кто в деле — и свои кнопки. */
 export function GatheringInfo({ gathering, meId }: { gathering: GatheringView; meId: string }) {
   const [status, setStatus] = useState(gathering.myStatus);
   const [cancelled, setCancelled] = useState(false);
@@ -56,13 +56,13 @@ export function GatheringInfo({ gathering, meId }: { gathering: GatheringView; m
   return (
     <div className="anim-rise">
       <p className="text-[17px] font-semibold tabular-nums">
-        Сбор в {gathering.gameName}, {gathering.when}
+        Сессия в {gathering.gameName}, {gathering.when}
       </p>
       <div className="mt-1.5 flex items-center gap-3">
         <NamesHint names={going.map((m) => m.name)} className="gap-3">
           {going.length > 0 && <AvatarStack people={going} size={30} max={8} />}
           <span className="text-[15px] text-dim">
-            {gathering.mine ? "Ты собираешь" : `Собирает ${gathering.creator?.name ?? "кто-то"}`}
+            {gathering.mine ? "Твоя сессия" : `Зовёт ${gathering.creator?.name ?? "кто-то"}`}
             {names.length ? `. ${who(names, "В деле", "В деле")}` : ". Пока никто не отозвался"}
           </span>
         </NamesHint>
@@ -92,13 +92,13 @@ export function GatheringInfo({ gathering, meId }: { gathering: GatheringView; m
         {gathering.mine && (
           <button
             onClick={() => {
-              if (!confirm("Отменить сбор? Сообщение в Discord тоже уберётся.")) return;
+              if (!confirm("Отменить сессию? Сообщение в Discord тоже уберётся.")) return;
               setCancelled(true);
               start(() => cancelGathering(gathering.id).catch(() => undefined));
             }}
             className="rounded-full px-4 py-3 text-[16px] font-medium text-dim transition hover:text-fg"
           >
-            Отменить сбор
+            Отменить сессию
           </button>
         )}
       </div>

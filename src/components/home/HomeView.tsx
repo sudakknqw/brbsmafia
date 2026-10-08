@@ -14,7 +14,7 @@ import { Splash } from "@/components/splash/Splash";
 
 export function HomeView({ data, month }: { data: CrewData; month: MonthData }) {
   const home = buildHome(data);
-  const stats = monthStats({ members: data.members, games: data.games, today: data.today, ...month });
+  const stats = monthStats({ games: data.games, ...month });
   return (
     <DayOverlayProvider data={data}>
       <Splash members={data.members} />

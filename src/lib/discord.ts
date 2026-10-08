@@ -134,12 +134,13 @@ export async function syncGatheringMessage(gatheringId: number, mentionIds: stri
     g.members.filter((m) => m.status === status).map((m) => byId.get(m.user_id)?.name).filter(Boolean).join(", ");
 
   const start = new Date(g.starts_at);
-  const creator = byId.get(g.created_by ?? "")?.name ?? "Кто-то";
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? "";
   const pings = mentionIds.map((id) => byId.get(id)?.discord_id).filter(Boolean) as string[];
 
   const body = {
-    content: `${pings.map((d) => `<@${d}>`).join(" ")}${pings.length ? "\n" : ""}**${creator}** собирает пати`,
+    // Только упоминания свободных — чтобы пришло уведомление; всё остальное в карточке.
+    // При правках упоминаний нет, и Discord оставляет прежний текст как есть.
+    content: pings.length ? pings.map((d) => `<@${d}>`).join(" ") : undefined,
     embeds: [
       {
         title: g.game_name,

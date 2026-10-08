@@ -5,7 +5,6 @@ export type Member = {
   name: string;
   avatar_url: string | null;
   timezone: string;
-  joined_at?: string;
 };
 
 export type Game = {

@@ -204,7 +204,7 @@ export async function startGathering(day: string, gameId: number): Promise<{ err
     .lt("starts_at", endsAt.toISOString())
     .gt("ends_at", startsAt.toISOString())
     .limit(1);
-  if (overlapping?.length) return { error: "На это время уже собирают" };
+  if (overlapping?.length) return { error: "На это время уже есть сессия" };
   if (!game) return { error: "Такой игры нет в библиотеке" };
 
   const { data: created, error } = await supabase
@@ -221,7 +221,7 @@ export async function startGathering(day: string, gameId: number): Promise<{ err
     .single();
   if (error) {
     // day уникален: на эту дату создателя уже есть сбор (другое окно).
-    return { error: error.code === "23505" ? "На этот день уже собирают" : "Не получилось начать сбор. Попробуй ещё раз." };
+    return { error: error.code === "23505" ? "На этот день уже есть сессия" : "Не получилось начать сессию. Попробуй ещё раз." };
   }
 
   await supabase.from("gathering_members").insert({ gathering_id: created.id, user_id: userId, status: "in" });
