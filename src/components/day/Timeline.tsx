@@ -6,6 +6,7 @@ import { Avatar } from "@/components/Avatar";
 import { Cover } from "@/components/GameArt";
 import { GameSearch } from "@/components/GameSearch";
 import { Sheet } from "@/components/Sheet";
+import { TimeDial } from "./TimeDial";
 import { memberColor } from "@/lib/colors";
 import { bestWindow } from "@/lib/overlap";
 import { DAY_HOURS } from "@/lib/time";
@@ -36,7 +37,8 @@ type Props = {
 };
 
 const pct = (i: number) => `${(i / DAY_HOURS) * 100}%`;
-const LOUPE = 12; // сколько часов в увеличенной полосе на телефоне
+// На телефоне шкала узкая (час — около 10 px), поэтому время там выбирается на циферблате.
+const isPhone = () => window.matchMedia("(max-width: 639px)").matches;
 
 function runs(hours: number[]): Range[] {
   const out: Range[] = [];
@@ -91,7 +93,8 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
   const [busy, setBusyState] = useState(mine.state === "busy");
   const [anchor, setAnchor] = useState<number | null>(null);
   const [hover, setHover] = useState<number | null>(null);
-  const [zoomAt, setZoomAt] = useState<number | null>(null); // телефон: куда ткнули, чтобы выбрать начало крупно
+  const [dial, setDial] = useState(false);
+  const [dialValue, setDialValue] = useState<Range>([12, 16]);
   const [picked, setPicked] = useState<number[]>(initialGames);
   const [popover, setPopover] = useState(false);
   // Окно с играми закрывается плавно; пока уходит — держим его последний отрезок
@@ -133,13 +136,34 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
 
   const save = (r: Range, g: number[]) => run(() => saveDay(day, Array.from({ length: r[1] - r[0] }, (_, i) => r[0] + i), g));
 
-  const pick = (h: number, fromLoupe = false) => {
-    // На телефоне ячейки шкалы по ~10 px: первое касание лишь открывает крупные кнопки рядом.
-    if (anchor === null && !fromLoupe && window.matchMedia("(max-width: 639px)").matches) {
-      setZoomAt(h);
-      return;
-    }
-    setZoomAt(null);
+  // Сколько остальных свободно в каждый час — для подсветки на циферблате.
+  const othersCounts = new Array<number>(DAY_HOURS).fill(0);
+  others.forEach((r) => r.hours.forEach((h) => othersCounts[h]++));
+
+  /** Телефон: циферблат. Начинаем с моего времени, иначе — с общего окна остальных, иначе — от места касания. */
+  const openDial = (near?: number) => {
+    const theirs = bestWindow(othersCounts);
+    const start = near ?? 12;
+    setDialValue(range ?? (theirs ? [theirs.from, theirs.to] : [start, Math.min(DAY_HOURS, start + 3)]));
+    setAnchor(null);
+    setPopover(false);
+    setDial(true);
+    haptic("select");
+  };
+
+  const confirmDial = () => {
+    const r = dialValue;
+    haptic("success");
+    setRange(r);
+    setBusyState(false);
+    setDial(false);
+    setPopover(true);
+    setGrown((n) => n + 1);
+    save(r, picked);
+  };
+
+  const pick = (h: number) => {
+    if (anchor === null && isPhone()) return openDial(h);
     haptic(anchor === null ? "select" : "success");
     if (anchor === null) {
       setAnchor(h);
@@ -186,18 +210,23 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
       : busy
         ? "Ты отметил, что не сможешь. Нажми на шкалу, если планы поменялись"
         : "Нажми в своей строке, с какого часа ты свободен";
+  // На телефоне время выбирается на циферблате — подсказка другая.
+  const phoneHint = !range && anchor === null && !busy ? "Нажми на свою строку, чтобы отметить время" : null;
 
-  // Для конца — 12 часов от начала; для начала — 12 часов вокруг места касания.
-  const loupeStart =
-    anchor !== null
-      ? Math.min(anchor, DAY_HOURS - LOUPE)
-      : Math.max(0, Math.min((zoomAt ?? 0) - LOUPE / 2 + 1, DAY_HOURS - LOUPE));
-  const loupeOpen = anchor !== null || zoomAt !== null;
 
   return (
     <section className="rounded-[24px] bg-glass p-4 sm:p-6">
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <p className={`text-[15px] ${anchor !== null || (invite && !range && !busy) ? "font-medium text-fg" : "text-dim"}`}>{hint}</p>
+        <p className={`text-[15px] ${anchor !== null || (invite && !range && !busy) ? "font-medium text-fg" : "text-dim"}`}>
+          {phoneHint ? (
+            <>
+              <span className="sm:hidden">{phoneHint}</span>
+              <span className="hidden sm:inline">{hint}</span>
+            </>
+          ) : (
+            hint
+          )}
+        </p>
         <p className="text-[13px] text-dim tabular-nums">
           {best ? (
             <>
@@ -268,38 +297,6 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
             )}
           </div>
         </div>
-
-        {/* Увеличенная полоса для пальца — только на узком экране */}
-        {loupeOpen && (
-          <div className="anim-fade col-span-2 mt-2 sm:hidden">
-            <p className="mb-2 text-[13px] text-dim">{anchor === null ? "С какого часа?" : "До какого часа?"}</p>
-            <div className="grid grid-cols-6 gap-1.5">
-              {Array.from({ length: Math.min(LOUPE, DAY_HOURS - loupeStart) }, (_, i) => loupeStart + i).map((h) => {
-                const inRange = preview && h >= preview[0] && h < preview[1];
-                return (
-                  <button
-                    key={h}
-                    onClick={() => pick(h, true)}
-                    className={`rounded-xl py-2.5 text-center text-[13px] tabular-nums transition ${
-                      h === anchor || h === zoomAt ? "bg-fg font-semibold text-ink" : inRange ? "bg-white/30" : "bg-glass"
-                    }`}
-                  >
-                    {anchor === null ? `с ${hourLabels[h]}` : `до ${hourLabels[h + 1]}`}
-                  </button>
-                );
-              })}
-            </div>
-            <button
-              onClick={() => {
-                setAnchor(null);
-                setZoomAt(null);
-              }}
-              className="mt-2 text-[13px] text-dim"
-            >
-              Отмена
-            </button>
-          </div>
-        )}
 
         {/* Остальные */}
         <div className="mt-1">
@@ -408,6 +405,7 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
                 </button>
                 <button
                   onClick={() => {
+                    if (isPhone()) return openDial();
                     setPopover(false);
                     setAnchor(popRange[0]);
                     setHover(popRange[1] - 1);
@@ -425,6 +423,28 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
           </div>
         )}
       </div>
+
+      <Sheet open={dial} onClose={() => setDial(false)} title="Когда свободен">
+        <p className="-mt-3 mb-3 text-[14px] text-dim">Тяни точки по кругу. Светлые деления внутри — когда свободны остальные.</p>
+        <TimeDial value={dialValue} onChange={setDialValue} hourLabels={hourLabels} others={othersCounts} />
+        <button
+          onClick={confirmDial}
+          className="mt-5 w-full rounded-full bg-fg py-3.5 text-[16px] font-semibold text-ink transition active:scale-[0.98]"
+        >
+          Дальше: игры
+        </button>
+        {range && (
+          <button
+            onClick={() => {
+              setDial(false);
+              remove();
+            }}
+            className="mt-2 w-full rounded-full py-3 text-[15px] text-dim transition hover:text-fg"
+          >
+            Убрать время
+          </button>
+        )}
+      </Sheet>
 
       <Sheet open={searching} onClose={() => setSearching(false)} title="Найти игру">
         <GameSearch

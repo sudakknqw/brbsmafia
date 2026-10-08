@@ -26,6 +26,13 @@
 html {
   background: var(--color-ink);
 }
+/* Невидимые подсказки у правого края не должны расширять страницу:
+   на телефоне из-за них весь сайт становился шире экрана. clip, а не hidden, —
+   чтобы не ломать прокрутку и sticky. */
+html,
+body {
+  overflow-x: clip;
+}
 
 body {
   color: var(--color-fg);
