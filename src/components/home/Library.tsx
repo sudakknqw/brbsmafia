@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useOptimistic, useRef, useState, useSyncExternalStore, useTransition, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useOptimistic, useRef, useState, useSyncExternalStore, useTransition, type CSSProperties, type ReactNode } from "react";
 import {
   closestCenter,
   DndContext,
@@ -19,6 +19,7 @@ import { NamesHint } from "@/components/NamesHint";
 import { Cover } from "@/components/GameArt";
 import { GameSearch } from "@/components/GameSearch";
 import { Sheet } from "@/components/Sheet";
+import { gameArt } from "@/lib/steam";
 import { haptic } from "@/lib/tg";
 import type { Game, Member, Want } from "@/lib/types";
 
@@ -99,6 +100,16 @@ export function Library({
       await saveLibraryOrder(next).catch(() => undefined);
     });
   };
+
+  // Спрятанные под «Показать все» обложки грузим заранее, когда браузер свободен, —
+  // чтобы при разворачивании они появлялись уже готовыми, а не проявлялись по одной.
+  const hiddenCovers = order.slice(collapsedCount).map((g) => gameArt(g).portrait[0]).filter(Boolean).join("|");
+  useEffect(() => {
+    if (!hiddenCovers) return;
+    const load = () => hiddenCovers.split("|").forEach((src) => (new Image().src = src));
+    const idle = window.requestIdleCallback?.(load) ?? window.setTimeout(load, 1500);
+    return () => (window.cancelIdleCallback ? window.cancelIdleCallback(idle) : clearTimeout(idle));
+  }, [hiddenCovers]);
 
   const box = useRef<HTMLDivElement>(null);
   const grownFrom = useRef<number | null>(null);

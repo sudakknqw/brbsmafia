@@ -26,7 +26,7 @@ export function StartGathering({ day, gameId, gameName }: { day: string; gameId:
           })
         }
         title={`Сессия в ${gameName} на общее окно, с упоминанием в Discord`}
-        className="rounded-full bg-glass2 px-5 py-3 text-[16px] font-medium backdrop-blur-md transition hover:bg-white/20 active:scale-[0.97] disabled:opacity-60"
+        className="rounded-full bg-white/15 px-5 py-3 text-[16px] font-medium transition hover:bg-white/20 active:scale-[0.97] disabled:opacity-60"
       >
         {pending ? "Создаём…" : "Начать сессию"}
       </button>
@@ -85,7 +85,7 @@ export function GatheringInfo({ gathering, meId }: { gathering: GatheringView; m
         <button
           onClick={() => choose("out")}
           aria-pressed={status === "out"}
-          className={`rounded-full px-5 py-3 text-[16px] font-medium backdrop-blur-md transition active:scale-[0.97] ${
+          className={`rounded-full px-5 py-3 text-[16px] font-medium transition active:scale-[0.97] ${
             status === "out" ? "bg-bad text-white" : "bg-glass2 hover:bg-white/20"
           }`}
         >

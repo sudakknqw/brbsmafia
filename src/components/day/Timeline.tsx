@@ -195,7 +195,7 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
   const loupeOpen = anchor !== null || zoomAt !== null;
 
   return (
-    <section className="rounded-[24px] bg-glass p-4 backdrop-blur-sm sm:p-6">
+    <section className="rounded-[24px] bg-glass p-4 sm:p-6">
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <p className={`text-[15px] ${anchor !== null || (invite && !range && !busy) ? "font-medium text-fg" : "text-dim"}`}>{hint}</p>
         <p className="text-[13px] text-dim tabular-nums">
@@ -363,7 +363,7 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
           // Плавает поверх строк друзей, прямо под моей полосой.
           <div className="absolute inset-x-0 top-[92px] z-20 sm:left-[170px]">
             <div
-              className={`${pop.closing ? "anim-popover-out pointer-events-none" : "anim-popover"} w-full rounded-[20px] border border-line bg-[#1a1a1f]/95 p-4 shadow-[0_24px_60px_rgba(0,0,0,0.55)] backdrop-blur-xl sm:ml-[var(--ml)] sm:w-[360px]`}
+              className={`${pop.closing ? "anim-popover-out pointer-events-none" : "anim-popover"} w-full rounded-[20px] border border-line bg-[#1a1a1f] p-4 shadow-[0_24px_60px_rgba(0,0,0,0.55)] sm:ml-[var(--ml)] sm:w-[360px]`}
               style={{ ["--ml" as string]: `clamp(0px, calc(${pct((popRange[0] + popRange[1]) / 2)} - 180px), calc(100% - 360px))` }}
             >
               <div className="mb-3 flex items-baseline justify-between gap-3">

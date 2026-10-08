@@ -97,7 +97,7 @@ export function Spotlight({ me, spotlight, gathering, today }: Props) {
               {!marked && (
                 <button
                   onClick={toggleBusy}
-                  className="rounded-full bg-glass2 px-5 py-3 text-[16px] font-medium backdrop-blur-md transition hover:bg-white/20 active:scale-[0.97]"
+                  className="rounded-full bg-white/15 px-5 py-3 text-[16px] font-medium transition hover:bg-white/20 active:scale-[0.97]"
                 >
                   {busy ? "Всё-таки могу" : "Сегодня не могу"}
                 </button>

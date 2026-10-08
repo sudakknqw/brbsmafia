@@ -40,7 +40,7 @@ export function Sheet({
   if (!mounted) return null;
   return createPortal(
     <div
-      className={`${closing ? "anim-fade-out pointer-events-none" : "anim-fade"} fixed inset-0 z-50 flex items-end justify-center bg-black/55 backdrop-blur-md sm:items-center sm:p-6`}
+      className={`${closing ? "anim-fade-out pointer-events-none" : "anim-fade"} fixed inset-0 z-50 flex items-end justify-center bg-black/65 sm:items-center sm:p-6`}
       onClick={onClose}
     >
       <div
@@ -48,7 +48,7 @@ export function Sheet({
         aria-modal="true"
         aria-label={shown.title}
         onClick={(e) => e.stopPropagation()}
-        className={`${closing ? "anim-sheet-out" : "anim-sheet"} max-h-[88dvh] w-full overflow-y-auto rounded-t-[28px] border-t border-line bg-[#141418]/95 px-5 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] backdrop-blur-xl sm:max-w-lg sm:rounded-[28px] sm:border sm:pt-5`}
+        className={`${closing ? "anim-sheet-out" : "anim-sheet"} max-h-[88dvh] w-full overflow-y-auto rounded-t-[28px] border-t border-line bg-[#141418] px-5 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:max-w-lg sm:rounded-[28px] sm:border sm:pt-5`}
       >
         <div className="mx-auto mb-3 h-1 w-9 rounded-full bg-glass2 sm:hidden" />
         <div className="mb-5 flex items-center justify-between gap-4">

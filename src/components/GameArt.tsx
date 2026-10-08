@@ -46,6 +46,7 @@ export function Cover({ game, className = "" }: { game: Game; className?: string
         src={src}
         alt={game.name}
         loading="lazy"
+        decoding="async"
         onError={failed}
         className={header ? "absolute inset-x-0 top-1/2 w-full -translate-y-1/2" : "h-full w-full object-cover"}
       />

@@ -16,23 +16,23 @@ export function useOpenDay() {
 
 // Плавное торможение без «зависания» в конце, как у раскрытия карточек в iOS.
 const EASE = "cubic-bezier(0.32, 0.72, 0, 1)";
-const FULL = "inset(0px 0px 0px 0px round 0px)";
+const FULL = "translate(0px, 0px) scale(1, 1)";
 const reduceMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-/** Прямоугольник элемента как clip-path относительно окна. */
-function clipFrom(el: HTMLElement | null) {
-  if (!el) return "inset(30% 10% 30% 10% round 28px)";
-  const r = el.getBoundingClientRect();
+/**
+ * Панель, ужатая точно в прямоугольник плитки (transform от левого верхнего угла).
+ * Раньше это был clip-path, но на iPhone он перерисовывал весь экран на каждом кадре
+ * и раскрытие дёргалось; transform двигает видеокарта, без перерисовки.
+ */
+function tileTransform(el: HTMLElement | null) {
   const w = window.innerWidth;
   const h = window.innerHeight;
-  // У кнопок-«пилюль» скругление 9999px — clip-path превращал их в полукруг,
-  // который в конце резко становился прямоугольником. Ограничиваем.
-  const radius = Math.min(parseFloat(getComputedStyle(el).borderTopLeftRadius) || 16, r.height / 2, r.width / 2, 24);
-  return `inset(${r.top}px ${w - r.right}px ${h - r.bottom}px ${r.left}px round ${radius}px)`;
+  const r = el?.getBoundingClientRect() ?? { left: w * 0.1, top: h * 0.3, width: w * 0.8, height: h * 0.4 };
+  return `translate(${r.left}px, ${r.top}px) scale(${Math.max(r.width / w, 0.01)}, ${Math.max(r.height / h, 0.01)})`;
 }
 
 /**
- * Раскрывающийся день: плитка растягивается на весь экран (clip-path),
+ * Раскрывающийся день: плитка растягивается на весь экран (transform),
  * а при закрытии сворачивается обратно в неё. Адрес не меняется, но в истории
  * появляется шаг — «Назад» в браузере или на телефоне закрывает день.
  */
@@ -63,8 +63,8 @@ export function DayOverlayProvider({ data, children }: { data: CrewData; childre
     origin.current?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "instant" });
     // Содержимое уходит, панель сворачивается в плитку и в самом конце растворяется в ней.
     el.firstElementChild?.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 180, fill: "forwards" });
-    el.animate([{ opacity: 1 }, { opacity: 1, offset: 0.65 }, { opacity: 0 }], { duration: 480, fill: "forwards" });
-    el.animate([{ clipPath: FULL }, { clipPath: clipFrom(origin.current) }], {
+    el.animate([{ opacity: 1 }, { opacity: 1, offset: 0.6 }, { opacity: 0 }], { duration: 480, fill: "forwards" });
+    el.animate([{ transform: FULL }, { transform: tileTransform(origin.current) }], {
       duration: 480,
       easing: EASE,
       fill: "forwards",
@@ -98,13 +98,18 @@ export function DayOverlayProvider({ data, children }: { data: CrewData; childre
     if (!openSeq || !el) return;
     el.scrollTop = 0;
     if (reduceMotion()) return;
-    // Панель вырастает из плитки, а содержимое чуть «подъезжает» навстречу.
-    el.animate([{ clipPath: clipFrom(origin.current) }, { clipPath: FULL }], { duration: 680, easing: EASE });
-    el.animate([{ opacity: 0.5 }, { opacity: 1, offset: 0.3 }, { opacity: 1 }], { duration: 680 });
-    el.firstElementChild?.animate([{ transform: "scale(0.96)", opacity: 0 }, { transform: "scale(1)", opacity: 1 }], {
-      duration: 680,
-      easing: EASE,
-    });
+    // Панель вырастает из плитки (сама по себе она просто тёмный фон — её растяжение не видно),
+    // а содержимое проявляется, когда панель уже почти раскрылась, и чуть «подъезжает» навстречу.
+    el.animate([{ transform: tileTransform(origin.current) }, { transform: FULL }], { duration: 680, easing: EASE });
+    el.animate([{ opacity: 0 }, { opacity: 1, offset: 0.22 }, { opacity: 1 }], { duration: 680 });
+    el.firstElementChild?.animate(
+      [
+        { transform: "scale(0.97)", opacity: 0 },
+        { transform: "scale(0.98)", opacity: 0, offset: 0.2 },
+        { transform: "scale(1)", opacity: 1 },
+      ],
+      { duration: 680, easing: EASE },
+    );
   }, [openSeq]);
 
   // Соседние дни — в пределах текущей недели (её данные уже загружены главной).
@@ -184,7 +189,7 @@ export function DayOverlayProvider({ data, children }: { data: CrewData; childre
           aria-modal="true"
           aria-label="День"
           data-day
-          className="fixed inset-0 z-40 overflow-x-hidden overflow-y-auto overscroll-contain bg-ink"
+          className="fixed inset-0 z-40 origin-top-left overflow-x-hidden overflow-y-auto overscroll-contain bg-ink"
           style={{ ["--base" as string]: "0.22s" }}
         >
           <div>

@@ -14,7 +14,8 @@
   --color-line: rgb(255 255 255 / 0.1);
   --color-bad: #ff6b5e;
   --font-sans: var(--font-onest), -apple-system, "Segoe UI", sans-serif;
-  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  /* Мягкий старт и долгое торможение: без рывка в первые кадры. */
+  --ease-out: cubic-bezier(0.25, 0.6, 0.3, 1);
 }
 
 :root {
@@ -124,13 +125,13 @@ button:disabled {
 @keyframes from-right {
   from {
     opacity: 0;
-    transform: translateX(48px);
+    transform: translateX(32px);
   }
 }
 @keyframes from-left {
   from {
     opacity: 0;
-    transform: translateX(-48px);
+    transform: translateX(-32px);
   }
 }
 @keyframes popover-out {
@@ -183,24 +184,24 @@ button:disabled {
   animation: tile-in 0.5s var(--ease-out) backwards;
 }
 .anim-fade {
-  animation: fade-in 0.25s ease-out both;
+  animation: fade-in 0.3s ease-out both;
 }
 .anim-grow {
   transform-origin: left;
   animation: grow-x 0.6s var(--ease-out) both;
 }
 .anim-from-right {
-  animation: from-right 0.42s var(--ease-out) both;
+  animation: from-right 0.5s var(--ease-out) both;
 }
 .anim-from-left {
-  animation: from-left 0.42s var(--ease-out) both;
+  animation: from-left 0.5s var(--ease-out) both;
 }
 .anim-popover {
   transform-origin: top center;
-  animation: popover-in 0.28s var(--ease-out) both;
+  animation: popover-in 0.32s var(--ease-out) both;
 }
 .anim-sheet {
-  animation: sheet-in 0.36s var(--ease-out) both;
+  animation: sheet-in 0.44s var(--ease-out) both;
 }
 @media (min-width: 640px) {
   .anim-sheet {
@@ -209,7 +210,7 @@ button:disabled {
 }
 /* Уходы: короче появлений и с ускорением в конце — элемент «убирают», а не он тает. */
 .anim-sheet-out {
-  animation: sheet-out 0.26s cubic-bezier(0.4, 0, 1, 1) both;
+  animation: sheet-out 0.3s cubic-bezier(0.4, 0, 0.8, 0.6) both;
 }
 @media (min-width: 640px) {
   .anim-sheet-out {
@@ -217,11 +218,11 @@ button:disabled {
   }
 }
 .anim-fade-out {
-  animation: fade-out 0.26s ease-in both;
+  animation: fade-out 0.3s ease-in both;
 }
 .anim-popover-out {
   transform-origin: top center;
-  animation: popover-out 0.18s ease-in both;
+  animation: popover-out 0.2s ease-in both;
 }
 /* Экран загрузки: при открытии и перезагрузке; после него в этой вкладке — обычные заглушки. */
 html[data-splash-seen] .splash,

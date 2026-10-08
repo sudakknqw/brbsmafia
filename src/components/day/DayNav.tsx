@@ -17,7 +17,7 @@ const arrow = (to: 1 | -1) => (
 );
 
 const style =
-  "flex size-11 items-center justify-center rounded-full bg-glass2 backdrop-blur-md transition hover:scale-105 hover:bg-white/20 active:scale-95";
+  "flex size-11 items-center justify-center rounded-full bg-white/15 transition hover:scale-105 hover:bg-white/20 active:scale-95";
 
 /**
  * Стрелки к соседним дням. В раскрытом дне на главной листают внутри недели
