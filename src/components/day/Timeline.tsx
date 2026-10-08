@@ -79,6 +79,9 @@ function toRange(hours: number[]): Range | null {
  * Шкала дня. В своей строке время отмечается прямо здесь: нажал начало,
  * нажал конец — появляется окно с выбором игр. Общее окно пересчитывается сразу.
  */
+// «08:00» → «8»; у часовых поясов со сдвигом в полчаса оставляем как есть.
+const shortHour = (label: string) => (label.endsWith(":00") ? String(Number(label.slice(0, -3))) : label);
+
 export function Timeline({ day, hourLabels, rows, meId, initialGames, games, recent, maxGames, invite, viewerTz }: Props) {
   const mine = rows.find((r) => r.member.id === meId)!;
   const others = rows.filter((r) => r.member.id !== meId);
@@ -203,18 +206,13 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
       <div className="relative grid grid-cols-[104px_minmax(0,1fr)] gap-x-3 sm:grid-cols-[150px_minmax(0,1fr)] sm:gap-x-5">
         {/* Ось часов */}
         <div />
-        <div className="relative mb-3 h-4 text-[12px] text-faint tabular-nums">
-          {hourLabels.map((label, i) =>
-            i % 4 === 0 ? (
-              <span
-                key={i}
-                className={`absolute ${i === 0 ? "" : i === DAY_HOURS ? "-translate-x-full" : "-translate-x-1/2"} ${i % 8 ? "hidden sm:block" : ""}`}
-                style={{ left: pct(i) }}
-              >
-                {label}
-              </span>
-            ) : null,
-          )}
+        {/* Подписи — просто часы («18»): на компьютере каждый час, на телефоне — каждые три (иначе слипаются). */}
+        <div className="relative mb-3 h-4 text-[11px] text-faint tabular-nums sm:text-[12px]">
+          {hourLabels.map((label, i) => (
+            <span key={i} className={`absolute -translate-x-1/2 ${i % 3 ? "hidden sm:block" : ""}`} style={{ left: pct(i) }}>
+              {shortHour(label)}
+            </span>
+          ))}
         </div>
 
         {/* Своя строка: одна сплошная подсветка на обе колонки, без стыка посередине */}
