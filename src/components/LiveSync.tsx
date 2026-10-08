@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { syncTimezone } from "@/app/actions";
+import { addDays, DAY_START_HOUR, gamingDay, zonedToUtc } from "@/lib/time";
 
 /**
  * Живые обновления: кто-то что-то поменял — страница перерисовывается.
@@ -18,6 +19,15 @@ export function LiveSync({ timezone, meId }: { timezone: string; meId: string })
     if (browserTz && browserTz !== timezone) {
       syncTimezone(browserTz).then((changed) => changed && router.refresh());
     }
+  }, [timezone, router]);
+
+  // Новый игровой день начинается в 08:00 — открытая вкладка перерисуется сама:
+  // «Сегодня» переедет на следующую плитку, а в понедельник сменится неделя.
+  useEffect(() => {
+    const now = new Date();
+    const next = zonedToUtc(addDays(gamingDay(now, timezone), 1), DAY_START_HOUR, timezone);
+    const t = setTimeout(() => router.refresh(), next.getTime() - now.getTime() + 5_000);
+    return () => clearTimeout(t);
   }, [timezone, router]);
 
   useEffect(() => {

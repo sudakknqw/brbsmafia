@@ -1,8 +1,9 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { DayView } from "./DayView";
 import type { CrewData } from "@/lib/views";
+import { addDays, weekStart } from "@/lib/time";
 
 type OpenDay = (day: string, origin: HTMLElement | null, invite?: boolean) => void;
 const DayOverlayContext = createContext<OpenDay | null>(null);
@@ -23,7 +24,9 @@ function clipFrom(el: HTMLElement | null) {
   const r = el.getBoundingClientRect();
   const w = window.innerWidth;
   const h = window.innerHeight;
-  const radius = parseFloat(getComputedStyle(el).borderTopLeftRadius) || 16;
+  // У кнопок-«пилюль» скругление 9999px — clip-path превращал их в полукруг,
+  // который в конце резко становился прямоугольником. Ограничиваем.
+  const radius = Math.min(parseFloat(getComputedStyle(el).borderTopLeftRadius) || 16, r.height / 2, r.width / 2, 24);
   return `inset(${r.top}px ${w - r.right}px ${h - r.bottom}px ${r.left}px round ${radius}px)`;
 }
 
@@ -35,6 +38,8 @@ function clipFrom(el: HTMLElement | null) {
 export function DayOverlayProvider({ data, children }: { data: CrewData; children: ReactNode }) {
   const [day, setDay] = useState<string | null>(null);
   const [invite, setInvite] = useState(false);
+  const [openSeq, setOpenSeq] = useState(0); // растёт при каждом открытии — запускает раскрытие
+  const [dir, setDir] = useState<1 | -1 | 0>(0); // куда листали дни: для анимации сдвига
   const panel = useRef<HTMLDivElement>(null);
   const origin = useRef<HTMLElement | null>(null);
   const closing = useRef(false);
@@ -76,16 +81,19 @@ export function DayOverlayProvider({ data, children }: { data: CrewData; childre
   const open = useCallback<OpenDay>((d, el, withInvite = false) => {
     origin.current = el;
     setInvite(withInvite);
+    setDir(0);
     setDay(d);
+    setOpenSeq((n) => n + 1);
     // Адрес не меняем: только запись в истории, чтобы «Назад» закрывал день.
     history.pushState({ ...history.state, brbsDay: d }, "", location.href);
     pushed.current = true;
   }, []);
 
-  // Раскрытие — сразу после монтирования панели.
-  useEffect(() => {
+  // Раскрытие — до первой отрисовки панели (useLayoutEffect): иначе она на кадр
+  // показывалась на весь экран и только потом начинала расти из плитки.
+  useLayoutEffect(() => {
     const el = panel.current;
-    if (!day || !el) return;
+    if (!openSeq || !el) return;
     el.scrollTop = 0;
     if (reduceMotion()) return;
     // Панель вырастает из плитки, а содержимое чуть «подъезжает» навстречу.
@@ -95,7 +103,20 @@ export function DayOverlayProvider({ data, children }: { data: CrewData; childre
       duration: 680,
       easing: EASE,
     });
-  }, [day]);
+  }, [openSeq]);
+
+  // Соседние дни — в пределах текущей недели (её данные уже загружены главной).
+  const monday = weekStart(data.today);
+  const inWeek = (d: string) => d >= monday && d <= addDays(monday, 6);
+  const prevDay = day && inWeek(addDays(day, -1)) ? addDays(day, -1) : null;
+  const nextDay = day && inWeek(addDays(day, 1)) ? addDays(day, 1) : null;
+  const go = useCallback((d: string | null, to: 1 | -1) => {
+    if (!d) return;
+    setDir(to);
+    setInvite(false);
+    setDay(d);
+    panel.current?.scrollTo({ top: 0 });
+  }, []);
 
   // Кнопка «Назад»: закрываем с анимацией.
   useEffect(() => {
@@ -113,14 +134,17 @@ export function DayOverlayProvider({ data, children }: { data: CrewData; childre
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !document.querySelector('[role="dialog"][aria-modal="true"]:not([data-day])')) close();
+      if (document.querySelector('[role="dialog"][aria-modal="true"]:not([data-day])')) return; // открыта шторка
+      if (e.key === "Escape") close();
+      if (e.key === "ArrowLeft") go(prevDay, -1);
+      if (e.key === "ArrowRight") go(nextDay, 1);
     };
     document.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = prev;
       document.removeEventListener("keydown", onKey);
     };
-  }, [day, close]);
+  }, [day, close, go, prevDay, nextDay]);
 
   return (
     <DayOverlayContext.Provider value={open}>
@@ -136,7 +160,17 @@ export function DayOverlayProvider({ data, children }: { data: CrewData; childre
           style={{ ["--base" as string]: "0.22s" }}
         >
           <div>
-            <DayView data={data} day={day} onClose={close} invite={invite} />
+            <div key={day} className={dir === 1 ? "anim-from-right" : dir === -1 ? "anim-from-left" : ""}>
+              <DayView
+                data={data}
+                day={day}
+                onClose={close}
+                invite={invite}
+                prevDay={prevDay}
+                nextDay={nextDay}
+                onGo={(d, to) => go(d, to)}
+              />
+            </div>
           </div>
         </div>
       )}

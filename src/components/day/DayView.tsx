@@ -11,12 +11,29 @@ import { NamesHint } from "@/components/NamesHint";
 import { HeaderCard } from "./HeaderCard";
 import { AmbientTail } from "@/components/AmbientTail";
 import { CloseBar } from "./CloseBar";
+import { DayNav } from "./DayNav";
 
 /**
  * Экран дня. Отдельной страницей (/day/…) или внутри раскрывающейся панели
  * на главной — тогда вместо «Главная» кнопка закрытия (onClose).
  */
-export function DayView({ data, day, onClose, invite }: { data: CrewData; day: string; onClose?: () => void; invite?: boolean }) {
+export function DayView({
+  data,
+  day,
+  onClose,
+  invite,
+  prevDay = null,
+  nextDay = null,
+  onGo,
+}: {
+  data: CrewData;
+  day: string;
+  onClose?: () => void;
+  invite?: boolean;
+  prevDay?: string | null;
+  nextDay?: string | null;
+  onGo?: (day: string, to: 1 | -1) => void;
+}) {
   const m = buildDay(data, day);
   const game = m.spotlightGame;
   const bestNames = m.best
@@ -32,12 +49,19 @@ export function DayView({ data, day, onClose, invite }: { data: CrewData; day: s
         <AmbientTail edge="bottom" />
         {onClose ? <CloseBar onClose={onClose} /> : <TopBar me={data.me} back />}
         <div className="mx-auto w-full max-w-6xl px-4 pt-10 pb-8 sm:px-8 sm:pt-16">
-          <p className="anim-rise text-[15px] text-dim" style={{ animationDelay: "var(--base, 0s)" }}>
-            {m.date}
-          </p>
-          <h1 className="anim-rise mt-1 text-[clamp(44px,9vw,84px)] leading-[0.92] font-extrabold tracking-[-0.045em]" style={{ animationDelay: "calc(var(--base, 0s) + 0.08s)" }}>
-            {m.title}
-          </h1>
+          <div className="flex items-end justify-between gap-4">
+            <div className="min-w-0">
+              <p className="anim-rise text-[15px] text-dim" style={{ animationDelay: "var(--base, 0s)" }}>
+                {m.date}
+              </p>
+              <h1 className="anim-rise mt-1 text-[clamp(44px,9vw,84px)] leading-[0.92] font-extrabold tracking-[-0.045em]" style={{ animationDelay: "calc(var(--base, 0s) + 0.08s)" }}>
+                {m.title}
+              </h1>
+            </div>
+            <div className="anim-rise mb-1" style={{ animationDelay: "calc(var(--base, 0s) + 0.08s)" }}>
+              <DayNav prevDay={prevDay} nextDay={nextDay} onGo={onGo} />
+            </div>
+          </div>
           <p className="anim-rise mt-4 text-[17px]" style={{ animationDelay: "calc(var(--base, 0s) + 0.16s)" }}>
             {m.best ? (
               <>

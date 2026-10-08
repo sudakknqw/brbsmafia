@@ -13,7 +13,7 @@ export default async function DayPage({ params }: PageProps<"/day/[date]">) {
   return (
     <>
       <LiveSync timezone={data.me.timezone} meId={data.me.id} />
-      <DayView data={data} day={day} />
+      <DayView data={data} day={day} prevDay={addDays(day, -1)} nextDay={addDays(day, 1)} />
     </>
   );
 }
