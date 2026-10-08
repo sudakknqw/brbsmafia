@@ -19,14 +19,6 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="ru" className={`${onest.variable} h-full`} suppressHydrationWarning>
-      <head>
-        {/* Экран загрузки показываем раз за сессию: при повторном заходе прячем его ещё до отрисовки. */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `try{if(sessionStorage.getItem("brbs-splash"))document.documentElement.dataset.splashSeen="1"}catch(e){}`,
-          }}
-        />
-      </head>
       <body className="min-h-full font-sans">{children}</body>
     </html>
   );

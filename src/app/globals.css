@@ -173,7 +173,7 @@ button:disabled {
     animation-name: sheet-in-desktop;
   }
 }
-/* Экран загрузки: только при первом заходе за сессию, потом — обычные заглушки. */
+/* Экран загрузки: при открытии и перезагрузке; после него в этой вкладке — обычные заглушки. */
 html[data-splash-seen] .splash,
 html:not([data-splash-seen]) .page-skeleton {
   display: none;

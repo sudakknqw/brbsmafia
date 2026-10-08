@@ -5,7 +5,9 @@ import { Avatar } from "@/components/Avatar";
 import type { Member } from "@/lib/types";
 import { choreography, entranceLength, type Frame } from "./choreography";
 
-export const SPLASH_KEY = "brbs-splash";
+// Живёт, пока открыта вкладка: при перезагрузке страницы модуль загружается заново
+// и экран показывается снова, а при переходах внутри сайта — нет.
+let playedThisLoad = false;
 const EASE = "cubic-bezier(0.2, 0.8, 0.2, 1)";
 const START = 260; // пауза перед выходом участников
 const HOLD = 520; // все собрались — короткая пауза
@@ -20,8 +22,8 @@ const keyframe = (f: Frame): Keyframe => ({
 
 /**
  * Экран загрузки «сбор пати»: аватарки участников слетаются к букве B —
- * по своей постановке для каждого числа людей (1–8). Показывается один раз
- * за сессию; при повторных заходах его скрывает скрипт в layout ещё до отрисовки.
+ * по своей постановке для каждого числа людей (1–8). Показывается при каждом
+ * открытии сайта и перезагрузке страницы, но не при переходах внутри сайта.
  */
 export function Splash({ members, demo = false, freezeAt }: { members: Member[]; demo?: boolean; freezeAt?: number }) {
   const [done, setDone] = useState(false);
@@ -34,19 +36,14 @@ export function Splash({ members, demo = false, freezeAt }: { members: Member[];
     if (!el) return;
     const finish = () => {
       if (demo) return setRound((r) => r + 1);
-      try {
-        sessionStorage.setItem(SPLASH_KEY, "1");
-      } catch {}
+      playedThisLoad = true;
+      // Для заглушки загрузки (app/loading.tsx): дальше в этой вкладке — обычный скелет, без буквы.
       document.documentElement.dataset.splashSeen = "1";
       setDone(true);
     };
 
-    let seen = false;
-    try {
-      seen = !!sessionStorage.getItem(SPLASH_KEY);
-    } catch {}
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (!demo && (seen || reduce || !crew.length)) {
+    if (!demo && (playedThisLoad || !crew.length)) {
       el.style.display = "none";
       const t = setTimeout(finish);
       return () => clearTimeout(t);
@@ -56,6 +53,20 @@ export function Splash({ members, demo = false, freezeAt }: { members: Member[];
     const avatars = [...el.querySelectorAll<HTMLElement>("[data-member]")];
     const letter = el.querySelector<HTMLElement>("[data-letter]")!;
     const animations: Animation[] = [];
+
+    // «Уменьшить движение» в системе: компания сразу стоит на местах, экран просто гаснет.
+    if (reduce) {
+      avatars.forEach((a, i) => {
+        const last = moves[i]?.frames.at(-1);
+        if (last) Object.assign(a.style, { transform: keyframe({ ...last, o: 1 }).transform as string, opacity: "1" });
+      });
+      const fade = setTimeout(() => el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: "forwards" }), 1100);
+      const end = setTimeout(finish, 1450);
+      return () => {
+        clearTimeout(fade);
+        clearTimeout(end);
+      };
+    }
 
     avatars.forEach((a, i) => {
       const m = moves[i];

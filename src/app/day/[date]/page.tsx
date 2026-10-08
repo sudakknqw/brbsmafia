@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { LiveSync } from "@/components/LiveSync";
 import { DayView } from "@/components/day/DayView";
+import { Splash } from "@/components/splash/Splash";
 import { loadCrewData, requireMember } from "@/lib/crew";
 import { addDays } from "@/lib/time";
 
@@ -13,6 +14,7 @@ export default async function DayPage({ params }: PageProps<"/day/[date]">) {
   return (
     <>
       <LiveSync timezone={data.me.timezone} meId={data.me.id} />
+      <Splash members={data.members} />
       <DayView data={data} day={day} prevDay={addDays(day, -1)} nextDay={addDays(day, 1)} />
     </>
   );
