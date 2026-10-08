@@ -17,14 +17,6 @@ export function TelegramSetup() {
     app.setHeaderColor?.("#050507");
     app.setBackgroundColor?.("#050507");
     app.disableVerticalSwipes?.();
-    // На компьютере — сразу во весь экран, как обычный сайт (Telegram 8.0+).
-    // На телефоне оставляем шапку Telegram: полноэкранный режим там прячет её.
-    if (["tdesktop", "macos"].includes(app.platform ?? "") && app.isVersionAtLeast?.("8.0") && !app.isFullscreen) {
-      try {
-        app.requestFullscreen?.();
-      } catch {}
-    }
-
     if (app.initDataUnsafe.user && !app.initDataUnsafe.user.allows_write_to_pm) {
       try {
         if (localStorage.getItem("brbs-write-asked")) return;
