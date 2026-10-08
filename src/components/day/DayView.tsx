@@ -9,6 +9,7 @@ import { buildDay, type CrewData } from "@/lib/views";
 import { ofTotal, people } from "@/lib/words";
 import { HeaderCard } from "./HeaderCard";
 import { AmbientTail } from "@/components/AmbientTail";
+import { CloseBar } from "./CloseBar";
 
 const pct = (i: number) => `${(i / DAY_HOURS) * 100}%`;
 
@@ -22,7 +23,11 @@ function runs(hours: number[]): [number, number][] {
   return out;
 }
 
-export function DayView({ data, day }: { data: CrewData; day: string }) {
+/**
+ * Экран дня. Отдельной страницей (/day/…) или внутри раскрывающейся панели
+ * на главной — тогда вместо «Главная» кнопка закрытия (onClose).
+ */
+export function DayView({ data, day, onClose }: { data: CrewData; day: string; onClose?: () => void }) {
   const m = buildDay(data, day);
   const game = m.spotlightGame;
 
@@ -33,13 +38,15 @@ export function DayView({ data, day }: { data: CrewData; day: string }) {
         {game && <HeroArt key={game.id} game={game} className="anim-art absolute inset-0 -z-20 h-full w-full opacity-70" />}
         <div className="absolute inset-0 -z-10" style={{ background: "linear-gradient(to top, var(--color-ink) 0%, var(--color-ink) 12%, rgb(5 5 7 / 0.7) 55%, rgb(5 5 7 / 0.3) 100%)" }} />
         <AmbientTail edge="bottom" />
-        <TopBar me={data.me} back />
+        {onClose ? <CloseBar onClose={onClose} /> : <TopBar me={data.me} back />}
         <div className="mx-auto w-full max-w-6xl px-4 pt-10 pb-8 sm:px-8 sm:pt-16">
-          <p className="anim-rise text-[15px] text-dim">{m.date}</p>
-          <h1 className="anim-rise mt-1 text-[clamp(44px,9vw,84px)] leading-[0.92] font-extrabold tracking-[-0.045em]" style={{ animationDelay: "0.08s" }}>
+          <p className="anim-rise text-[15px] text-dim" style={{ animationDelay: "var(--base, 0s)" }}>
+            {m.date}
+          </p>
+          <h1 className="anim-rise mt-1 text-[clamp(44px,9vw,84px)] leading-[0.92] font-extrabold tracking-[-0.045em]" style={{ animationDelay: "calc(var(--base, 0s) + 0.08s)" }}>
             {m.title}
           </h1>
-          <p className="anim-rise mt-4 text-[17px]" style={{ animationDelay: "0.16s" }}>
+          <p className="anim-rise mt-4 text-[17px]" style={{ animationDelay: "calc(var(--base, 0s) + 0.16s)" }}>
             {m.best ? (
               <>
                 Все вместе с <b className="font-semibold tabular-nums">{m.hourLabels[m.best.from]}</b> до{" "}
@@ -49,7 +56,7 @@ export function DayView({ data, day }: { data: CrewData; day: string }) {
               <span className="text-dim">Пока никто не совпал</span>
             )}
           </p>
-          <div className="anim-rise mt-6" style={{ animationDelay: "0.24s" }}>
+          <div className="anim-rise mt-6" style={{ animationDelay: "calc(var(--base, 0s) + 0.24s)" }}>
             <DayActions seed={m.editor} title={m.title} games={data.games} recent={data.recent} maxGames={MAX_DAY_GAMES} />
           </div>
         </div>
@@ -109,7 +116,7 @@ export function DayView({ data, day }: { data: CrewData; day: string }) {
                             left: pct(a),
                             width: pct(b - a),
                             background: memberColor(member.id),
-                            animationDelay: `${0.1 + row * 0.05}s`,
+                            animationDelay: `calc(var(--base, 0s) + ${0.1 + row * 0.05}s)`,
                           }}
                           title={`${m.hourLabels[a]} – ${m.hourLabels[b]}`}
                         />
@@ -132,7 +139,7 @@ export function DayView({ data, day }: { data: CrewData; day: string }) {
           {m.dayGames.length ? (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {m.dayGames.map(({ game, people: who }, i) => (
-                <div key={game.id} className="anim-rise" style={{ animationDelay: `${i * 0.06}s` }}>
+                <div key={game.id} className="anim-rise" style={{ animationDelay: `calc(var(--base, 0s) + ${0.3 + i * 0.06}s)` }}>
                   <HeaderCard game={game} />
                   <div className="mt-2.5 flex items-center justify-between gap-3">
                     <span className="truncate text-[15px] font-medium">{game.name}</span>

@@ -87,10 +87,17 @@ export function Ambient({ game }: { game: Game | null }) {
 
   useEffect(() => {
     const root = document.documentElement;
-    const set = (rgb: string) => root.style.setProperty("--ambient", rgb);
+    const previous = root.style.getPropertyValue("--ambient");
+    let alive = true;
+    const set = (rgb: string) => alive && root.style.setProperty("--ambient", rgb);
+    // Когда экран закрывается (например, панель дня), возвращаем прежний цвет.
+    const restore = () => {
+      alive = false;
+      if (previous) root.style.setProperty("--ambient", previous);
+    };
     if (!appid) {
       if (fallback) set(hexToRgb(fallback));
-      return;
+      return restore;
     }
     const img = new Image();
     img.crossOrigin = "anonymous";
@@ -120,6 +127,7 @@ export function Ambient({ game }: { game: Game | null }) {
         /* картинку не дали прочитать — остаётся прежний цвет */
       }
     };
+    return restore;
   }, [appid, fallback]);
 
   return null;

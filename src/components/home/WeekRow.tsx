@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { DayLink } from "@/components/day/DayLink";
 import { QuickFill } from "./QuickFill";
 import type { HomeModel } from "@/lib/views";
 
@@ -12,9 +12,9 @@ export function WeekRow({ week, total }: { week: HomeModel["week"]; total: numbe
       </div>
       <div className="no-scrollbar -mx-4 flex snap-x scroll-px-4 gap-3 overflow-x-auto px-4 py-2 sm:-mx-8 sm:scroll-px-8 sm:px-8">
         {week.map((d) => (
-          <Link
+          <DayLink
             key={d.day}
-            href={`/day/${d.day}`}
+            day={d.day}
             className={`tile w-[132px] shrink-0 snap-start rounded-2xl bg-glass p-3.5 sm:w-[148px] ${d.isToday ? "tile-on" : ""}`}
           >
             <div className="flex items-baseline justify-between">
@@ -42,7 +42,7 @@ export function WeekRow({ week, total }: { week: HomeModel["week"]; total: numbe
             <p className="mt-2.5 text-[13px] text-dim">
               {d.peak >= 2 ? `до ${d.peak} вместе` : d.peak === 1 ? "пока один" : "пусто"}
             </p>
-          </Link>
+          </DayLink>
         ))}
       </div>
     </section>

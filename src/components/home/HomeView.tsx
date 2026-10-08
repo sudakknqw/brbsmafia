@@ -5,11 +5,12 @@ import { Library } from "./Library";
 import { buildHome, type CrewData } from "@/lib/views";
 import { MAX_DAY_GAMES } from "@/lib/limits";
 import { AmbientTail } from "@/components/AmbientTail";
+import { DayOverlayProvider } from "@/components/day/DayOverlay";
 
 export function HomeView({ data }: { data: CrewData }) {
   const home = buildHome(data);
   return (
-    <>
+    <DayOverlayProvider data={data}>
       <Spotlight
         me={data.me}
         spotlight={home.spotlight}
@@ -25,6 +26,6 @@ export function HomeView({ data }: { data: CrewData }) {
         <StatusRow statuses={home.statuses} meId={data.me.id} />
         <Library games={data.games} wants={data.wants} members={data.members} meId={data.me.id} />
       </main>
-    </>
+    </DayOverlayProvider>
   );
 }

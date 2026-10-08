@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { DayLink } from "@/components/day/DayLink";
 import { useState, useTransition } from "react";
 import { clearDay, setBusy } from "@/app/actions";
 import { AvatarStack } from "@/components/Avatar";
@@ -90,12 +90,9 @@ export function Spotlight({ me, spotlight, total, today, games, recent, maxGames
               {busy ? "Всё-таки могу" : "Сегодня не могу"}
             </button>
           )}
-          <Link
-            href={`/day/${spotlight.day}`}
-            className="rounded-full px-4 py-3 text-[16px] font-medium text-dim transition hover:text-fg"
-          >
+          <DayLink day={spotlight.day} className="rounded-full px-4 py-3 text-[16px] font-medium text-dim transition hover:text-fg">
             Расписание дня
-          </Link>
+          </DayLink>
         </div>
       </div>
 
