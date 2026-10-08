@@ -4,9 +4,18 @@ import "./globals.css";
 
 const onest = Onest({ variable: "--font-onest", subsets: ["latin", "cyrillic"], weight: ["400", "500", "600", "800"] });
 
+// Превью ссылки в Telegram и Discord: картинка — app/opengraph-image.png (надпись BRABUS).
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://brbsmafia.vercel.app"),
   title: "brbs mafia",
   description: "Когда все свободны и во что играем",
+  openGraph: {
+    title: "brbs mafia",
+    description: "Когда все свободны и во что играем",
+    siteName: "brbs mafia",
+    type: "website",
+  },
+  twitter: { card: "summary_large_image" },
 };
 
 export const viewport: Viewport = {
