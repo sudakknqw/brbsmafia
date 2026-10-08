@@ -87,11 +87,11 @@ button:disabled {
 }
 @keyframes pop {
   from {
-    transform: scale(0.4);
+    transform: scale(0.5);
     opacity: 0;
   }
-  60% {
-    transform: scale(1.15);
+  65% {
+    transform: scale(1.06);
   }
 }
 @keyframes popover-in {
@@ -133,6 +133,35 @@ button:disabled {
     transform: translateX(-48px);
   }
 }
+@keyframes popover-out {
+  to {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+}
+@keyframes sheet-out {
+  to {
+    transform: translateY(100%);
+  }
+}
+@keyframes sheet-out-desktop {
+  to {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+}
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+/* Обложки, которые появляются при разворачивании библиотеки. */
+@keyframes tile-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.96);
+  }
+}
 @keyframes shimmer {
   to {
     background-position: -200% 0;
@@ -146,7 +175,12 @@ button:disabled {
   animation: rise 0.7s var(--ease-out) both;
 }
 .anim-pop {
-  animation: pop 0.35s var(--ease-out) both;
+  animation: pop 0.4s var(--ease-out) both;
+}
+/* backwards, а не both: после появления анимация не должна держать transform —
+   иначе перетаскивание (оно двигает обложку через transform) перестанет работать. */
+.anim-tile-in {
+  animation: tile-in 0.5s var(--ease-out) backwards;
 }
 .anim-fade {
   animation: fade-in 0.25s ease-out both;
@@ -172,6 +206,22 @@ button:disabled {
   .anim-sheet {
     animation-name: sheet-in-desktop;
   }
+}
+/* Уходы: короче появлений и с ускорением в конце — элемент «убирают», а не он тает. */
+.anim-sheet-out {
+  animation: sheet-out 0.26s cubic-bezier(0.4, 0, 1, 1) both;
+}
+@media (min-width: 640px) {
+  .anim-sheet-out {
+    animation-name: sheet-out-desktop;
+  }
+}
+.anim-fade-out {
+  animation: fade-out 0.26s ease-in both;
+}
+.anim-popover-out {
+  transform-origin: top center;
+  animation: popover-out 0.18s ease-in both;
 }
 /* Экран загрузки: при открытии и перезагрузке; после него в этой вкладке — обычные заглушки. */
 html[data-splash-seen] .splash,

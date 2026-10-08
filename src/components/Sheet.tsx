@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { usePresence } from "@/lib/usePresence";
 
 /**
  * Шторка снизу на телефоне, окно по центру на компьютере.
@@ -30,22 +31,28 @@ export function Sheet({
     };
   }, [open, onClose]);
 
-  if (!open) return null;
+  // Закрытая шторка ещё немного видна — уезжает вниз (на компьютере тает), а не пропадает рывком.
+  const { mounted, closing } = usePresence(open, 260);
+  // Пока уезжает — показываем то, что было внутри в момент закрытия (его часто сразу обнуляют).
+  const [last, setLast] = useState({ title, children });
+  if (open && (last.title !== title || last.children !== children)) setLast({ title, children });
+  const shown = closing ? last : { title, children };
+  if (!mounted) return null;
   return createPortal(
     <div
-      className="anim-fade fixed inset-0 z-50 flex items-end justify-center bg-black/55 backdrop-blur-md sm:items-center sm:p-6"
+      className={`${closing ? "anim-fade-out pointer-events-none" : "anim-fade"} fixed inset-0 z-50 flex items-end justify-center bg-black/55 backdrop-blur-md sm:items-center sm:p-6`}
       onClick={onClose}
     >
       <div
         role="dialog"
         aria-modal="true"
-        aria-label={title}
+        aria-label={shown.title}
         onClick={(e) => e.stopPropagation()}
-        className="anim-sheet max-h-[88dvh] w-full overflow-y-auto rounded-t-[28px] border-t border-line bg-[#141418]/95 px-5 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] backdrop-blur-xl sm:max-w-lg sm:rounded-[28px] sm:border sm:pt-5"
+        className={`${closing ? "anim-sheet-out" : "anim-sheet"} max-h-[88dvh] w-full overflow-y-auto rounded-t-[28px] border-t border-line bg-[#141418]/95 px-5 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] backdrop-blur-xl sm:max-w-lg sm:rounded-[28px] sm:border sm:pt-5`}
       >
         <div className="mx-auto mb-3 h-1 w-9 rounded-full bg-glass2 sm:hidden" />
         <div className="mb-5 flex items-center justify-between gap-4">
-          <h2 className="text-[22px] font-semibold tracking-tight">{title}</h2>
+          <h2 className="text-[22px] font-semibold tracking-tight">{shown.title}</h2>
           <button
             onClick={onClose}
             aria-label="Закрыть"
@@ -56,7 +63,7 @@ export function Sheet({
             </svg>
           </button>
         </div>
-        {children}
+        {shown.children}
       </div>
     </div>,
     document.body,

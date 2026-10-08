@@ -1,6 +1,6 @@
 "use client";
 
-import { useOptimistic, useRef, useState, useSyncExternalStore, useTransition, type ReactNode } from "react";
+import { useLayoutEffect, useOptimistic, useRef, useState, useSyncExternalStore, useTransition, type CSSProperties, type ReactNode } from "react";
 import {
   closestCenter,
   DndContext,
@@ -30,6 +30,13 @@ function subscribeColumns(onChange: () => void) {
   lists.forEach((l) => l.addEventListener("change", onChange));
   return () => lists.forEach((l) => l.removeEventListener("change", onChange));
 }
+// Разворачивание: высота плавно меняется, а за край сетки ничего не вылезает
+// (снизу обрезаем, по бокам и сверху — нет, чтобы не резать белую рамку и тень обложек).
+const EASE = "cubic-bezier(0.32, 0.72, 0, 1)";
+const CLIP = "inset(-16px -16px 0 -16px)";
+const GAP_Y = 24; // gap-y-6
+const reduceMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
 const columnsNow = () => (window.matchMedia(COLUMN_QUERIES[0]).matches ? 6 : window.matchMedia(COLUMN_QUERIES[1]).matches ? 4 : 3);
 
 /**
@@ -93,15 +100,57 @@ export function Library({
     });
   };
 
-  const toggleExpanded = () => {
-    // Свернули, стоя внизу длинного списка, — возвращаемся к началу библиотеки.
-    // Прокручиваем уже после сворачивания: иначе укоротившаяся страница обрывает прокрутку.
-    setExpanded(!expanded);
-    if (!expanded) return;
-    setTimeout(() => {
-      const el = section.current;
-      if (el && el.getBoundingClientRect().top < 0) el.scrollIntoView({ block: "start", behavior: "smooth" });
+  const box = useRef<HTMLDivElement>(null);
+  const grownFrom = useRef<number | null>(null);
+  const shrinking = useRef<Animation | null>(null);
+  const shrinkTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  // После разворачивания сетка уже полная: растим её высоту от прежней до новой.
+  useLayoutEffect(() => {
+    shrinking.current?.cancel(); // свернули — держать высоту анимацией больше не нужно
+    shrinking.current = null;
+    clearTimeout(shrinkTimer.current);
+    const el = box.current;
+    const from = grownFrom.current;
+    grownFrom.current = null;
+    if (!el || from === null || reduceMotion()) return;
+    const to = el.offsetHeight;
+    el.animate([{ height: `${from}px`, clipPath: CLIP }, { height: `${to}px`, clipPath: CLIP }], {
+      duration: Math.min(800, 420 + (to - from) * 0.25),
+      easing: EASE,
     });
+  }, [expanded]);
+
+  const toggleExpanded = () => {
+    if (shrinking.current) return; // уже сворачивается
+    const el = box.current;
+    if (!expanded) {
+      grownFrom.current = el?.offsetHeight ?? null;
+      setExpanded(true);
+      return;
+    }
+    // Свернули, стоя внизу длинного списка, — возвращаемся к началу библиотеки.
+    const top = section.current;
+    if (top && top.getBoundingClientRect().top < 0) top.scrollIntoView({ block: "start", behavior: "smooth" });
+    const firstHidden = el?.querySelector<HTMLElement>(`[data-i="${collapsedCount}"]`);
+    if (!el || !firstHidden || reduceMotion()) {
+      setExpanded(false);
+      return;
+    }
+    // Лишние обложки тают, сетка сжимается до двух рядов — и только потом они убираются.
+    const target = firstHidden.getBoundingClientRect().top - el.getBoundingClientRect().top - GAP_Y;
+    el.querySelectorAll<HTMLElement>("[data-i]").forEach((tile) => {
+      if (Number(tile.dataset.i) >= collapsedCount) tile.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 220, fill: "forwards" });
+    });
+    const anim = el.animate([{ height: `${el.offsetHeight}px`, clipPath: CLIP }, { height: `${target}px`, clipPath: CLIP }], {
+      duration: 460,
+      easing: EASE,
+      fill: "forwards",
+    });
+    shrinking.current = anim;
+    anim.onfinish = () => setExpanded(false);
+    // Страховка: в фоновой вкладке браузер может не доиграть анимацию.
+    shrinkTimer.current = setTimeout(() => setExpanded(false), 700);
   };
 
   const artGame = games.find((g) => g.id === artGameId) ?? null;
@@ -154,12 +203,18 @@ export function Library({
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={() => haptic("tap")} onDragEnd={onDragEnd}>
           <SortableContext items={shown.map((g) => g.id)} strategy={rectSortingStrategy}>
-            <div className="grid grid-cols-3 gap-x-3 gap-y-6 sm:grid-cols-4 lg:grid-cols-6">
-              {shown.map((g) => {
+            <div ref={box} className="grid grid-cols-3 gap-x-3 gap-y-6 sm:grid-cols-4 lg:grid-cols-6">
+              {shown.map((g, i) => {
                 const wanters = wantersOf(g.id);
                 const mine = wanters.some((m) => m.id === meId);
                 return (
-                  <SortableTile key={g.id} id={g.id}>
+                  <SortableTile
+                    key={g.id}
+                    id={g.id}
+                    index={i}
+                    // Открывшиеся при разворачивании — появляются волной, по порядку.
+                    reveal={expanded && i >= collapsedCount ? Math.min((i - collapsedCount) * 35, 420) : null}
+                  >
                     <button
                       onClick={() => {
                         if (justDragged.current) return;
@@ -226,14 +281,17 @@ export function Library({
 }
 
 /** Ячейка, которую можно перетаскивать. Поднятая — чуть крупнее и поверх остальных. */
-function SortableTile({ id, children }: { id: number; children: ReactNode }) {
+function SortableTile({ id, index, reveal, children }: { id: number; index: number; reveal: number | null; children: ReactNode }) {
   const { setNodeRef, listeners, transform, transition, isDragging } = useSortable({ id });
+  const style: CSSProperties = { transform: CSS.Translate.toString(transform), transition };
+  if (reveal !== null) style.animationDelay = `${reveal}ms`;
   return (
     <div
       ref={setNodeRef}
       {...listeners}
-      style={{ transform: CSS.Translate.toString(transform), transition }}
-      className={`touch-manipulation select-none [-webkit-touch-callout:none] ${isDragging ? "relative z-20 scale-105 opacity-90 drop-shadow-[0_18px_30px_rgba(0,0,0,0.6)]" : ""}`}
+      data-i={index}
+      style={style}
+      className={`touch-manipulation select-none [-webkit-touch-callout:none] ${reveal !== null ? "anim-tile-in" : ""} ${isDragging ? "relative z-20 scale-105 opacity-90 drop-shadow-[0_18px_30px_rgba(0,0,0,0.6)]" : ""}`}
     >
       {children}
     </div>

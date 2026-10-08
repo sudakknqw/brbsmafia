@@ -26,7 +26,7 @@ export function StatusRow({ statuses, meId, viewerTz }: { statuses: HomeModel["s
                   <div
                     key={g.id}
                     className="anim-pop w-[22px] overflow-hidden rounded-[5px] shadow-[0_0_0_2px_var(--color-ink)]"
-                    style={{ marginLeft: i ? -10 : 0, transform: `rotate(${(i - 1) * 8}deg)`, animationDelay: `${i * 60}ms` }}
+                    style={{ marginLeft: i ? -10 : 0, rotate: `${(i - 1) * 8}deg`, animationDelay: `${i * 60}ms` }}
                   >
                     <Cover game={g} className="!rounded-[5px] !p-0 !text-[0px]" />
                   </div>

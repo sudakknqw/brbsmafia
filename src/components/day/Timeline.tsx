@@ -9,6 +9,7 @@ import { Sheet } from "@/components/Sheet";
 import { memberColor } from "@/lib/colors";
 import { bestWindow } from "@/lib/overlap";
 import { DAY_HOURS } from "@/lib/time";
+import { usePresence } from "@/lib/usePresence";
 import { wheelToX } from "@/lib/wheel";
 import type { Game, Member } from "@/lib/types";
 import { plural, who } from "@/lib/words";
@@ -93,6 +94,12 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
   const [zoomAt, setZoomAt] = useState<number | null>(null); // телефон: куда ткнули, чтобы выбрать начало крупно
   const [picked, setPicked] = useState<number[]>(initialGames);
   const [popover, setPopover] = useState(false);
+  // Окно с играми закрывается плавно; пока уходит — держим его последний отрезок
+  // (при «Убрать время» сам отрезок обнуляется сразу).
+  const pop = usePresence(popover && !!range, 180);
+  const [lastRange, setLastRange] = useState(range);
+  if (range && lastRange !== range) setLastRange(range);
+  const popRange = range ?? lastRange;
   const [searching, setSearching] = useState(false);
   const [grown, setGrown] = useState(0); // перезапуск анимации полосы
   const [, start] = useTransition();
@@ -352,17 +359,17 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
         )}
 
         {/* Окно выбора игр под моей полосой */}
-        {popover && range && (
+        {pop.mounted && popRange && (
           // Плавает поверх строк друзей, прямо под моей полосой.
           <div className="absolute inset-x-0 top-[92px] z-20 sm:left-[170px]">
             <div
-              className="anim-popover w-full rounded-[20px] border border-line bg-[#1a1a1f]/95 p-4 shadow-[0_24px_60px_rgba(0,0,0,0.55)] backdrop-blur-xl sm:ml-[var(--ml)] sm:w-[360px]"
-              style={{ ["--ml" as string]: `clamp(0px, calc(${pct((range[0] + range[1]) / 2)} - 180px), calc(100% - 360px))` }}
+              className={`${pop.closing ? "anim-popover-out pointer-events-none" : "anim-popover"} w-full rounded-[20px] border border-line bg-[#1a1a1f]/95 p-4 shadow-[0_24px_60px_rgba(0,0,0,0.55)] backdrop-blur-xl sm:ml-[var(--ml)] sm:w-[360px]`}
+              style={{ ["--ml" as string]: `clamp(0px, calc(${pct((popRange[0] + popRange[1]) / 2)} - 180px), calc(100% - 360px))` }}
             >
               <div className="mb-3 flex items-baseline justify-between gap-3">
                 <span className="text-[15px] font-semibold tabular-nums">
-                  {hourLabels[range[0]]} – {hourLabels[range[1]]}
-                  <span className="ml-2 font-normal text-dim">{duration(range)}</span>
+                  {hourLabels[popRange[0]]} – {hourLabels[popRange[1]]}
+                  <span className="ml-2 font-normal text-dim">{duration(popRange)}</span>
                 </span>
                 <span className="text-[13px] text-dim">во что хочешь, до {maxGames === 5 ? "пяти" : maxGames}</span>
               </div>
@@ -393,7 +400,7 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
                 <button
                   onClick={() => {
                     setPopover(false);
-                    save(range, picked);
+                    save(popRange, picked);
                   }}
                   className="flex-1 rounded-full bg-fg py-2.5 text-[15px] font-semibold text-ink transition active:scale-[0.98]"
                 >
@@ -402,8 +409,8 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
                 <button
                   onClick={() => {
                     setPopover(false);
-                    setAnchor(range[0]);
-                    setHover(range[1] - 1);
+                    setAnchor(popRange[0]);
+                    setHover(popRange[1] - 1);
                     setRange(null);
                   }}
                   className="rounded-full bg-glass px-4 py-2.5 text-[15px] transition hover:bg-glass2"
