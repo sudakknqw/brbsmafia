@@ -32,8 +32,8 @@ export function StatusRow({ statuses, meId, viewerTz }: { statuses: HomeModel["s
                 ))}
               </div>
             </div>
-            <p className="mt-2.5 truncate text-center text-[14px] font-medium">{member.id === meId ? "Ты" : member.name}</p>
-            <p className="truncate text-center text-[12px] text-faint">{games.length ? games.map((g) => g.name).join(", ") : "без статуса"}</p>
+            <p className="mt-2.5 w-full truncate text-center text-[14px] font-medium">{member.id === meId ? "Ты" : member.name}</p>
+            <p className="w-full truncate text-center text-[12px] text-faint">{games.length ? games.map((g) => g.name).join(", ") : "без статуса"}</p>
           </FriendTime>
         ))}
       </div>
