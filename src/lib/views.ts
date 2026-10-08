@@ -2,7 +2,7 @@
 // поэтому этим же пользуется страница предпросмотра с выдуманными данными.
 import { dayStats, entryFor } from "./overlap";
 import { silentJoke } from "./jokes";
-import { addDays, dateLong, DAY_HOURS, dayNumber, formatTime, hourStart, weekdayLong, weekdayShort, weekStart } from "./time";
+import { addDays, dateLong, DAY_HOURS, dayNumber, dayWindow, formatTime, hourStart, weekdayLong, weekdayShort, weekStart } from "./time";
 import type { DayEntry, Game, Gathering, Member, Want } from "./types";
 
 export type CrewData = {
@@ -37,10 +37,18 @@ export type GatheringView = {
   mine: boolean;
 };
 
-/** Сбор на день — в том виде, как его показывают экраны. */
+/**
+ * Сбор на день — в том виде, как его показывают экраны. Ищем по времени начала
+ * в игровом дне ЗРИТЕЛЯ: у друга в другом поясе тот же сбор может приходиться
+ * на соседнюю дату. Закончившийся сбор не показываем.
+ */
 export function gatheringView(data: CrewData, day: string): GatheringView | null {
-  const g = data.gatherings.find((x) => x.day === day);
-  if (!g) return null;
+  const { start, end } = dayWindow(day, data.me.timezone);
+  const g = data.gatherings.find((x) => {
+    const s = Date.parse(x.starts_at);
+    return s >= start.getTime() && s < end.getTime();
+  });
+  if (!g || Date.parse(g.ends_at) <= data.now.getTime()) return null;
   const tz = data.me.timezone;
   const pick = (status: "in" | "out") =>
     g.members
@@ -112,7 +120,13 @@ export function buildHome(data: CrewData) {
   const days = week.map((day) => ({ day, ...dayStats(day, tz, data.members, data.entries) }));
 
   // Прожектор: ближайший день, где кто-то совпал; иначе — что хотят прямо сейчас.
-  const lit = days.find((d) => d.day >= data.today && d.best);
+  // Сегодняшнее окно, которое уже прошло, не в счёт — смотрим дальше по неделе.
+  const lit = days.find(
+    (d) =>
+      d.day >= data.today &&
+      d.best &&
+      !(d.day === data.today && hourStart(d.day, d.best.to, tz).getTime() <= data.now.getTime()),
+  );
   let spotlight: Spotlight;
   if (lit?.best) {
     const inWindow = data.members.filter((m) => (lit.freeHours.get(m.id) ?? []).includes(lit.best!.from));

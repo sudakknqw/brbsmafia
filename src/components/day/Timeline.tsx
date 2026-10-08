@@ -84,6 +84,7 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
   const [busy, setBusyState] = useState(mine.state === "busy");
   const [anchor, setAnchor] = useState<number | null>(null);
   const [hover, setHover] = useState<number | null>(null);
+  const [zoomAt, setZoomAt] = useState<number | null>(null); // телефон: куда ткнули, чтобы выбрать начало крупно
   const [picked, setPicked] = useState<number[]>(initialGames);
   const [popover, setPopover] = useState(false);
   const [searching, setSearching] = useState(false);
@@ -119,7 +120,13 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
 
   const save = (r: Range, g: number[]) => run(() => saveDay(day, Array.from({ length: r[1] - r[0] }, (_, i) => r[0] + i), g));
 
-  const pick = (h: number) => {
+  const pick = (h: number, fromLoupe = false) => {
+    // На телефоне ячейки шкалы по ~10 px: первое касание лишь открывает крупные кнопки рядом.
+    if (anchor === null && !fromLoupe && window.matchMedia("(max-width: 639px)").matches) {
+      setZoomAt(h);
+      return;
+    }
+    setZoomAt(null);
     if (anchor === null) {
       setAnchor(h);
       setHover(h);
@@ -165,7 +172,12 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
         ? "Ты отметил, что не сможешь. Нажми на шкалу, если планы поменялись"
         : "Нажми в своей строке, с какого часа ты свободен";
 
-  const loupeStart = anchor === null ? 0 : Math.min(anchor, DAY_HOURS - LOUPE);
+  // Для конца — 12 часов от начала; для начала — 12 часов вокруг места касания.
+  const loupeStart =
+    anchor !== null
+      ? Math.min(anchor, DAY_HOURS - LOUPE)
+      : Math.max(0, Math.min((zoomAt ?? 0) - LOUPE / 2 + 1, DAY_HOURS - LOUPE));
+  const loupeOpen = anchor !== null || zoomAt !== null;
 
   return (
     <section className="rounded-[24px] bg-glass p-4 backdrop-blur-sm sm:p-6">
@@ -183,7 +195,7 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
         </p>
       </div>
 
-      <div className="relative grid grid-cols-[84px_minmax(0,1fr)] gap-x-3 sm:grid-cols-[150px_minmax(0,1fr)] sm:gap-x-5">
+      <div className="relative grid grid-cols-[104px_minmax(0,1fr)] gap-x-3 sm:grid-cols-[150px_minmax(0,1fr)] sm:gap-x-5">
         {/* Ось часов */}
         <div />
         <div className="relative mb-3 h-4 text-[12px] text-faint tabular-nums">
@@ -248,25 +260,32 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
         </div>
 
         {/* Увеличенная полоса для пальца — только на узком экране */}
-        {anchor !== null && (
+        {loupeOpen && (
           <div className="anim-fade col-span-2 mt-2 sm:hidden">
+            <p className="mb-2 text-[13px] text-dim">{anchor === null ? "С какого часа?" : "До какого часа?"}</p>
             <div className="grid grid-cols-6 gap-1.5">
               {Array.from({ length: Math.min(LOUPE, DAY_HOURS - loupeStart) }, (_, i) => loupeStart + i).map((h) => {
                 const inRange = preview && h >= preview[0] && h < preview[1];
                 return (
                   <button
                     key={h}
-                    onClick={() => pick(h)}
+                    onClick={() => pick(h, true)}
                     className={`rounded-xl py-2.5 text-center text-[13px] tabular-nums transition ${
-                      h === anchor ? "bg-fg font-semibold text-ink" : inRange ? "bg-white/30" : "bg-glass"
+                      h === anchor || h === zoomAt ? "bg-fg font-semibold text-ink" : inRange ? "bg-white/30" : "bg-glass"
                     }`}
                   >
-                    до {hourLabels[h + 1]}
+                    {anchor === null ? `с ${hourLabels[h]}` : `до ${hourLabels[h + 1]}`}
                   </button>
                 );
               })}
             </div>
-            <button onClick={() => setAnchor(null)} className="mt-2 text-[13px] text-dim">
+            <button
+              onClick={() => {
+                setAnchor(null);
+                setZoomAt(null);
+              }}
+              className="mt-2 text-[13px] text-dim"
+            >
               Отмена
             </button>
           </div>
@@ -321,7 +340,7 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
 
         {/* Общее окно поверх всех строк */}
         {best && (
-          <div className="pointer-events-none absolute top-7 bottom-0 left-[96px] right-0 sm:left-[170px]" aria-hidden="true">
+          <div className="pointer-events-none absolute top-7 bottom-0 left-[116px] right-0 sm:left-[170px]" aria-hidden="true">
             <div
               className="absolute -inset-y-1 rounded-xl bg-white/[0.05] shadow-[0_0_0_1.5px_#fff] transition-all duration-300"
               style={{ left: pct(best.from), width: pct(best.to - best.from) }}

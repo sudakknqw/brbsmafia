@@ -38,7 +38,7 @@ export async function loadMembers(supabase: Supabase): Promise<Member[]> {
     .from("members")
     .select("joined_at, profiles!members_user_id_fkey(id, name, avatar_url, timezone)")
     .order("joined_at");
-  return (data ?? []).map((row) => row.profiles as unknown as Member);
+  return (data ?? []).map((row) => ({ ...(row.profiles as unknown as Member), joined_at: row.joined_at as string }));
 }
 
 export async function loadEntries(supabase: Supabase, from: string, to: string): Promise<DayEntry[]> {

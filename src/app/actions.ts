@@ -186,8 +186,6 @@ export async function startGathering(day: string, gameId: number): Promise<{ err
   if (!isDay(day)) return { error: "Неверный день" };
   const { supabase, userId, tz } = await member();
 
-  const { data: existing } = await supabase.from("gatherings").select("id").eq("day", day).maybeSingle();
-  if (existing) return { error: "На этот день уже собирают" };
 
   const [members, entries, { data: game }] = await Promise.all([
     loadMembers(supabase),
@@ -196,21 +194,35 @@ export async function startGathering(day: string, gameId: number): Promise<{ err
   ]);
   const { best, freeHours } = dayStats(day, tz, members, entries);
   if (!best) return { error: "Пока никто не совпал по времени" };
+
+  // Один сбор на окно: если кто-то уже собирает на это же время — не дублируем.
+  const startsAt = hourStart(day, best.from, tz);
+  const endsAt = hourStart(day, best.to, tz);
+  const { data: overlapping } = await supabase
+    .from("gatherings")
+    .select("id")
+    .lt("starts_at", endsAt.toISOString())
+    .gt("ends_at", startsAt.toISOString())
+    .limit(1);
+  if (overlapping?.length) return { error: "На это время уже собирают" };
   if (!game) return { error: "Такой игры нет в библиотеке" };
 
   const { data: created, error } = await supabase
     .from("gatherings")
     .insert({
       day,
-      starts_at: hourStart(day, best.from, tz).toISOString(),
-      ends_at: hourStart(day, best.to, tz).toISOString(),
+      starts_at: startsAt.toISOString(),
+      ends_at: endsAt.toISOString(),
       game_id: game.id,
       game_name: game.name,
       created_by: userId,
     })
     .select("id")
     .single();
-  if (error) return { error: "Не получилось начать сбор. Попробуй ещё раз." };
+  if (error) {
+    // day уникален: на эту дату создателя уже есть сбор (другое окно).
+    return { error: error.code === "23505" ? "На этот день уже собирают" : "Не получилось начать сбор. Попробуй ещё раз." };
+  }
 
   await supabase.from("gathering_members").insert({ gathering_id: created.id, user_id: userId, status: "in" });
   const free = members.filter((m) => m.id !== userId && (freeHours.get(m.id) ?? []).includes(best.from)).map((m) => m.id);

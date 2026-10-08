@@ -1,5 +1,5 @@
 // Итоги месяца: считаются из сборов и отмеченного времени, без отдельной таблицы.
-import { addDays } from "./time";
+import { addDays, calendarDay } from "./time";
 import type { DayEntry, Game, Gathering, Member } from "./types";
 import { plural } from "./words";
 
@@ -92,12 +92,11 @@ export function monthStats({ members, games, entries, gatherings, monthStart, to
     cards.push({ kind: "person", label: "Главная сова", member: owl.member, note: `обычно до ${String(h).padStart(2, "0")}:00` });
   }
 
-  // Молчун: дни с начала месяца, когда человек ничего не отметил.
-  const total = Math.round((Date.parse(today) - Date.parse(monthStart)) / 86400000) + 1;
+  // Молчун: дни без отметок с начала месяца — но не раньше, чем человек вступил.
   const silent = leader(members, (m) => {
+    const joined = m.joined_at ? calendarDay(new Date(m.joined_at), m.timezone) : monthStart;
     let quiet = 0;
-    for (let i = 0; i < total; i++) {
-      const d = addDays(monthStart, i);
+    for (let d = joined > monthStart ? joined : monthStart; d <= today; d = addDays(d, 1)) {
       if (!entries.some((e) => e.user_id === m.id && e.day === d)) quiet++;
     }
     return quiet;
