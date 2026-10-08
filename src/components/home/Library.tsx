@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { deleteGame } from "@/app/actions";
 import { GameArtEditor } from "@/components/GameArtEditor";
 import { AvatarStack } from "@/components/Avatar";
@@ -15,6 +15,11 @@ import { byPlaytime, type Game, type Member, type Want } from "@/lib/types";
  * Общая библиотека. Нажатие на обложку ставит игру в твой статус на сутки.
  * Хотелки «живые» (меняются сразу при нажатии) и общие со всей главной — см. HomeLive.
  */
+// Свёрнутая библиотека — два ряда: 3, 4 или 6 колонок в зависимости от ширины экрана.
+const ROWS2 = { phone: 6, tablet: 8, desktop: 12 };
+const collapsedClass = (i: number) =>
+  i < ROWS2.phone ? "" : i < ROWS2.tablet ? "hidden sm:block" : i < ROWS2.desktop ? "hidden lg:block" : "hidden";
+
 export function Library({
   games,
   wants,
@@ -34,6 +39,19 @@ export function Library({
   const [editing, setEditing] = useState(false);
   const [artGameId, setArtGameId] = useState<number | null>(null);
   const [hidden, setHidden] = useState<number[]>([]);
+  const [expanded, setExpanded] = useState(false);
+  const section = useRef<HTMLElement>(null);
+
+  const toggleExpanded = () => {
+    // Свернули, стоя внизу длинного списка, — возвращаемся к началу библиотеки.
+    // Прокручиваем уже после сворачивания: иначе укоротившаяся страница обрывает прокрутку.
+    setExpanded(!expanded);
+    if (!expanded) return;
+    setTimeout(() => {
+      const el = section.current;
+      if (el && el.getBoundingClientRect().top < 0) el.scrollIntoView({ block: "start", behavior: "smooth" });
+    });
+  };
   const [, start] = useTransition();
   const live = wants;
   const artGame = games.find((g) => g.id === artGameId) ?? null;
@@ -64,7 +82,7 @@ export function Library({
   };
 
   return (
-    <section>
+    <section ref={section} className="scroll-mt-6">
       <div className="mb-1 flex items-end justify-between gap-4">
         <h2 className="text-[22px] font-semibold tracking-tight">Библиотека</h2>
         <div className="flex gap-2">
@@ -97,11 +115,11 @@ export function Library({
         </button>
       ) : (
         <div className="grid grid-cols-3 gap-x-3 gap-y-6 sm:grid-cols-4 lg:grid-cols-6">
-          {order.map((g) => {
+          {order.map((g, i) => {
             const wanters = wantersOf(g.id);
             const mine = wanters.some((m) => m.id === meId);
             return (
-              <div key={g.id}>
+              <div key={g.id} className={expanded ? "" : collapsedClass(i)}>
                 <button
                   onClick={() => (editing ? setArtGameId(g.id) : toggle(g.id))}
                   aria-pressed={editing ? undefined : mine}
@@ -138,6 +156,14 @@ export function Library({
             );
           })}
         </div>
+      )}
+      {order.length > ROWS2.phone && (
+        <button
+          onClick={toggleExpanded}
+          className={`mt-6 w-full rounded-full bg-glass py-3 text-[15px] font-medium transition hover:bg-glass2 ${order.length <= ROWS2.tablet ? "sm:hidden" : ""} ${order.length <= ROWS2.desktop ? "lg:hidden" : ""}`}
+        >
+          {expanded ? "Свернуть" : `Показать все (${order.length})`}
+        </button>
       )}
 
       <Sheet open={adding} onClose={() => setAdding(false)} title="Добавить игру">

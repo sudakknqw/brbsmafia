@@ -26,6 +26,15 @@ export function mockCrew(variant: "full" | "empty" = "full"): CrewData {
     { id: 4, steam_appid: 1966720, name: "Lethal Company" },
     { id: 5, steam_appid: 553850, name: "HELLDIVERS 2" },
     { id: 6, steam_appid: null, name: "Minecraft" },
+    // Большая полка — как после синхронизации со Steam (проверка «Показать все»).
+    { id: 7, steam_appid: 108600, name: "Project Zomboid" },
+    { id: 8, steam_appid: 3241660, name: "R.E.P.O." },
+    { id: 9, steam_appid: 105600, name: "Terraria" },
+    { id: 10, steam_appid: 413150, name: "Stardew Valley" },
+    { id: 11, steam_appid: 252490, name: "Rust" },
+    { id: 12, steam_appid: 381210, name: "Dead by Daylight" },
+    { id: 13, steam_appid: 1172470, name: "Apex Legends" },
+    { id: 14, steam_appid: 1086940, name: "Baldur's Gate 3" },
   ];
 
   const tz = "Europe/Moscow";
