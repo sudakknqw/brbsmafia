@@ -1,7 +1,7 @@
 // Из сырых данных — то, что показывают экраны. Без обращения к базе,
 // поэтому этим же пользуется страница предпросмотра с выдуманными данными.
 import { dayStats, entryFor } from "./overlap";
-import { noMatchPhrase, silentPhrase } from "./phrases";
+import { noMatchPhrase, personalPhrase, silentPhrase } from "./phrases";
 import { addDays, dateLong, DAY_HOURS, dayNumber, dayWindow, formatTime, hourStart, weekdayLong, weekdayShort, weekStart } from "./time";
 import type { DayEntry, Game, Gathering, Member, Want } from "./types";
 
@@ -207,7 +207,8 @@ export function buildDay(data: CrewData, day: string) {
       const entry = entryFor(data.entries, m.id, day);
       const hours = freeHours.get(m.id) ?? [];
       const state: keyof typeof order = hours.length ? "free" : entry?.status === "busy" ? "busy" : "silent";
-      return { member: m, hours, state, note: state === "silent" ? silentPhrase(m.id, day) : null };
+      const note = state === "silent" ? silentPhrase(m.id, day) : state === "busy" ? personalPhrase(m.id) : null;
+      return { member: m, hours, state, note };
     })
     .sort((a, b) => order[a.state] - order[b.state]);
 

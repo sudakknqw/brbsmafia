@@ -1,6 +1,7 @@
 import { Avatar } from "@/components/Avatar";
 import { Cover } from "@/components/GameArt";
 import { FriendTime } from "@/components/FriendTime";
+import { personalPhrase } from "@/lib/phrases";
 import type { HomeModel } from "@/lib/views";
 
 /** Друзья и игры, которые у них сейчас в статусе. */
@@ -33,7 +34,7 @@ export function StatusRow({ statuses, meId, viewerTz }: { statuses: HomeModel["s
               </div>
             </div>
             <p className="mt-2.5 w-full truncate text-center text-[14px] font-medium">{member.id === meId ? "Ты" : member.name}</p>
-            <p className="w-full truncate text-center text-[12px] text-faint">{games.length ? games.map((g) => g.name).join(", ") : "без статуса"}</p>
+            <p className="w-full truncate text-center text-[12px] text-faint">{games.length ? games.map((g) => g.name).join(", ") : (personalPhrase(member.id) ?? "без статуса")}</p>
           </FriendTime>
         ))}
       </div>

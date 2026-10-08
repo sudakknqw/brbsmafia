@@ -37,6 +37,15 @@ export function pick<T>(list: readonly T[], seed: string | number): T {
   return list[h % list.length];
 }
 
-export const silentPhrase = (userId: string, day: string) => pick(SILENT, userId + day);
-export const busyPhrase = (userId: string, day: string) => pick(BUSY, userId + day);
+/**
+ * Личные подписи: у этих людей вместо случайных фраз всегда одна своя —
+ * когда молчат, когда NO и когда без статуса. По id, а не по нику: ник можно сменить.
+ */
+const PERSONAL: Record<string, string> = {
+  "41e352ad-bb2e-4b7e-b528-e7caa3d7657c": "ему похуй", // никита
+};
+export const personalPhrase = (userId: string): string | null => PERSONAL[userId] ?? null;
+
+export const silentPhrase = (userId: string, day: string) => personalPhrase(userId) ?? pick(SILENT, userId + day);
+export const busyPhrase = (userId: string, day: string) => personalPhrase(userId) ?? pick(BUSY, userId + day);
 export const noMatchPhrase = (day: string) => pick(NO_MATCH, day);

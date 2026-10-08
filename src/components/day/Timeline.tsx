@@ -335,7 +335,7 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
                       title={`${hourLabels[a]} – ${hourLabels[b]}`}
                     />
                   ))}
-                {state === "silent" && <span className="absolute inset-y-0 left-0 flex items-center text-[13px] text-faint italic">{note}</span>}
+                {state !== "free" && note && <span className="absolute inset-y-0 left-0 flex items-center text-[13px] text-faint italic">{note}</span>}
               </div>
             </div>
           ))}
