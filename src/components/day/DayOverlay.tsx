@@ -13,8 +13,9 @@ export function useOpenDay() {
 }
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
-const EASE_OPEN = "cubic-bezier(0.16, 1, 0.3, 1)";
-const EASE_CLOSE = "cubic-bezier(0.4, 0, 0.2, 1)";
+// Плавное торможение без «зависания» в конце, как у раскрытия карточек в iOS.
+const EASE = "cubic-bezier(0.32, 0.72, 0, 1)";
+const FULL = "inset(0px 0px 0px 0px round 0px)";
 const reduceMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /** Прямоугольник элемента как clip-path относительно окна. */
@@ -55,14 +56,16 @@ export function DayOverlayProvider({ data, children }: { data: CrewData; childre
     };
     if (reduceMotion()) return done();
     // Содержимое гаснет, а сама панель сворачивается обратно в плитку.
-    el.firstElementChild?.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, fill: "forwards" });
-    el.animate([{ clipPath: "inset(0px 0px 0px 0px round 0px)" }, { clipPath: clipFrom(origin.current) }], {
-      duration: 420,
-      easing: EASE_CLOSE,
+    // Содержимое уходит, панель сворачивается в плитку и в самом конце растворяется в ней.
+    el.firstElementChild?.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 180, fill: "forwards" });
+    el.animate([{ opacity: 1 }, { opacity: 1, offset: 0.65 }, { opacity: 0 }], { duration: 480, fill: "forwards" });
+    el.animate([{ clipPath: FULL }, { clipPath: clipFrom(origin.current) }], {
+      duration: 480,
+      easing: EASE,
       fill: "forwards",
     }).onfinish = done;
     // Страховка: в фоновой вкладке браузер может не доиграть анимацию.
-    setTimeout(done, 600);
+    setTimeout(done, 700);
   }, []);
 
   const close = useCallback(() => {
@@ -89,9 +92,12 @@ export function DayOverlayProvider({ data, children }: { data: CrewData; childre
     if (!day || !el) return;
     el.scrollTop = 0;
     if (reduceMotion()) return;
-    el.animate([{ clipPath: clipFrom(origin.current) }, { clipPath: "inset(0px 0px 0px 0px round 0px)" }], {
-      duration: 620,
-      easing: EASE_OPEN,
+    // Панель вырастает из плитки, а содержимое чуть «подъезжает» навстречу.
+    el.animate([{ clipPath: clipFrom(origin.current) }, { clipPath: FULL }], { duration: 680, easing: EASE });
+    el.animate([{ opacity: 0.5 }, { opacity: 1, offset: 0.3 }, { opacity: 1 }], { duration: 680 });
+    el.firstElementChild?.animate([{ transform: "scale(0.96)", opacity: 0 }, { transform: "scale(1)", opacity: 1 }], {
+      duration: 680,
+      easing: EASE,
     });
   }, [day]);
 

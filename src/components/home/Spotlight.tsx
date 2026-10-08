@@ -51,7 +51,7 @@ export function Spotlight({ me, spotlight, today }: Props) {
 
       <div className="mx-auto mt-auto w-full max-w-6xl px-4 pb-10 sm:px-8 sm:pb-14">
         <p className="anim-rise text-[17px] font-semibold" style={{ animationDelay: "0.15s" }}>
-          {when ?? (game ? "Сейчас в статусах" : "Пока тихо")}
+          {when ?? (game ? "Сегодня" : "Пока тихо")}
         </p>
 
         <div className="anim-rise mt-3 mb-5" style={{ animationDelay: "0.25s" }}>

@@ -10,7 +10,7 @@ import { memberColor } from "@/lib/colors";
 import { bestWindow } from "@/lib/overlap";
 import { DAY_HOURS } from "@/lib/time";
 import type { Game, Member } from "@/lib/types";
-import { people } from "@/lib/words";
+import { people, plural } from "@/lib/words";
 
 type Row = { member: Member; hours: number[]; state: "free" | "busy" | "silent"; note: string | null };
 type Range = [number, number];
@@ -39,6 +39,28 @@ function runs(hours: number[]): Range[] {
     else out.push([h, h + 1]);
   }
   return out;
+}
+
+function duration([a, b]: Range) {
+  const n = b - a;
+  return `${n} ${plural(n, "час", "часа", "часов")}`;
+}
+
+/** Красный кружок «NO»: не смогу в этот день. */
+function NoButton({ active, onClick }: { active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-pressed={active}
+      aria-label={active ? "Всё-таки смогу" : "Не смогу в этот день"}
+      title={active ? "Всё-таки смогу" : "Не смогу"}
+      className={`flex size-7 shrink-0 items-center justify-center rounded-full text-[9px] font-extrabold tracking-wide transition active:scale-90 ${
+        active ? "bg-bad text-white" : "text-faint ring-1 ring-white/20 hover:bg-bad/20 hover:text-bad hover:ring-bad/60"
+      }`}
+    >
+      NO
+    </button>
+  );
 }
 
 /** Один промежуток на день: если в базе их несколько, берём от первого до последнего часа. */
@@ -113,6 +135,10 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
   const markBusy = (value: boolean) => {
     setBusyState(value);
     setAnchor(null);
+    if (value) {
+      setRange(null);
+      setPopover(false);
+    }
     run(() => (value ? setBusy(day) : clearDay(day)));
   };
 
@@ -125,9 +151,9 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
   const hint = range
     ? "Нажми на свою полосу, чтобы поменять игры или убрать время"
     : anchor !== null
-      ? `С ${hourLabels[anchor]}. Теперь нажми, до какого часа`
+      ? `${hourLabels[preview![0]]} – ${hourLabels[preview![1]]}, ${duration(preview!)}. Нажми, до какого часа`
       : busy
-        ? "Ты отметил, что не сможешь"
+        ? "Ты отметил, что не сможешь. Нажми на шкалу, если планы поменялись"
         : "Нажми в своей строке, с какого часа ты свободен";
 
   const loupeStart = anchor === null ? 0 : Math.min(anchor, DAY_HOURS - LOUPE);
@@ -158,13 +184,15 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
           )}
         </div>
 
-        {/* Своя строка */}
-        <div ref={myRow} id="my-row" className="-ml-2 flex h-14 items-center gap-2.5 rounded-l-2xl bg-white/[0.05] pl-2">
+        {/* Своя строка: одна сплошная подсветка на обе колонки, без стыка посередине */}
+        <div className="pointer-events-none absolute -inset-x-2 top-7 h-14 rounded-2xl bg-white/[0.06]" aria-hidden="true" />
+        <div ref={myRow} id="my-row" className="relative flex h-14 items-center gap-2 pr-1">
           <Avatar id={mine.member.id} name={mine.member.name} url={mine.member.avatar_url} size={26} />
-          <span className="truncate text-[14px] font-semibold">Ты</span>
+          <span className="min-w-0 flex-1 truncate text-[14px] font-semibold">Ты</span>
+          <NoButton active={busy} onClick={() => markBusy(!busy)} />
         </div>
-        <div className="relative -mr-2 h-14 rounded-r-2xl bg-white/[0.05] pr-2">
-          <div className="relative h-full">
+        <div className="relative h-14">
+          <div className={`relative h-full transition-opacity ${busy && !range && anchor === null ? "opacity-40" : ""}`}>
             <div className="absolute inset-x-0 top-1/2 h-4 -translate-y-1/2 rounded-full bg-white/10" />
             {range && (
               <button
@@ -187,15 +215,7 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
                 />
               </>
             )}
-            {busy && !range && anchor === null && (
-              <span className="absolute inset-y-0 left-0 flex items-center gap-3 text-[13px] text-dim">
-                не можешь
-                <button onClick={() => markBusy(false)} className="rounded-full bg-glass px-3 py-1 text-[12px] text-fg transition hover:bg-glass2">
-                  Всё-таки смогу
-                </button>
-              </span>
-            )}
-            {!range && !busy && (
+            {!range && (
               <div className="absolute inset-0 grid grid-cols-24" onPointerLeave={() => anchor !== null && setHover(anchor)}>
                 {hourLabels.slice(0, -1).map((label, h) => (
                   <button
@@ -207,14 +227,6 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
                   />
                 ))}
               </div>
-            )}
-            {!range && !busy && anchor === null && (
-              <button
-                onClick={() => markBusy(true)}
-                className="absolute top-1/2 right-0 -translate-y-1/2 rounded-full bg-glass2 px-3 py-1 text-[12px] font-medium backdrop-blur-md transition hover:bg-white/20"
-              >
-                Не смогу
-              </button>
             )}
           </div>
         </div>
@@ -247,9 +259,16 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
         {/* Остальные */}
         <div className="mt-1">
           {others.map(({ member, state }) => (
-            <div key={member.id} className={`flex h-12 items-center gap-2.5 ${state === "free" ? "" : "opacity-45"}`}>
-              <Avatar id={member.id} name={member.name} url={member.avatar_url} size={26} />
-              <span className="truncate text-[14px] font-medium">{member.name}</span>
+            <div key={member.id} className="flex h-12 items-center gap-2 pr-1">
+              <span className={`flex min-w-0 flex-1 items-center gap-2 ${state === "free" ? "" : "opacity-45"}`}>
+                <Avatar id={member.id} name={member.name} url={member.avatar_url} size={26} />
+                <span className="truncate text-[14px] font-medium">{member.name}</span>
+              </span>
+              {state === "busy" && (
+                <span title="Не может" className="flex size-7 shrink-0 items-center justify-center rounded-full bg-bad text-[9px] font-extrabold tracking-wide text-white">
+                  NO
+                </span>
+              )}
             </div>
           ))}
         </div>
@@ -276,11 +295,7 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
                       title={`${hourLabels[a]} – ${hourLabels[b]}`}
                     />
                   ))}
-                {state !== "free" && (
-                  <span className={`absolute inset-y-0 left-0 flex items-center text-[13px] ${state === "silent" ? "text-faint italic" : "text-dim"}`}>
-                    {state === "busy" ? "не может" : note}
-                  </span>
-                )}
+                {state === "silent" && <span className="absolute inset-y-0 left-0 flex items-center text-[13px] text-faint italic">{note}</span>}
               </div>
             </div>
           ))}
@@ -307,6 +322,7 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
               <div className="mb-3 flex items-baseline justify-between gap-3">
                 <span className="text-[15px] font-semibold tabular-nums">
                   {hourLabels[range[0]]} – {hourLabels[range[1]]}
+                  <span className="ml-2 font-normal text-dim">{duration(range)}</span>
                 </span>
                 <span className="text-[13px] text-dim">во что хочешь, до {maxGames === 5 ? "пяти" : maxGames}</span>
               </div>
