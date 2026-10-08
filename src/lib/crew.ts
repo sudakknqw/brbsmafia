@@ -56,6 +56,23 @@ export async function loadGames(supabase: Supabase): Promise<Game[]> {
   return (data ?? []) as Game[];
 }
 
+/** Игры с наигранным временем всей компании. Если миграции 006 ещё нет — просто без него. */
+async function withPlaytime(supabase: Supabase, games: Game[]): Promise<Game[]> {
+  const { data, error } = await supabase.from("steam_playtime").select("steam_appid, recent_minutes, total_minutes");
+  if (error || !data?.length) return games;
+  const sum = new Map<number, { recent: number; total: number }>();
+  for (const r of data) {
+    const s = sum.get(r.steam_appid) ?? { recent: 0, total: 0 };
+    s.recent += r.recent_minutes;
+    s.total += r.total_minutes;
+    sum.set(r.steam_appid, s);
+  }
+  return games.map((g) => {
+    const s = g.steam_appid ? sum.get(g.steam_appid) : undefined;
+    return s ? { ...g, played_recent: s.recent, played_total: s.total } : g;
+  });
+}
+
 export async function loadActiveWants(supabase: Supabase): Promise<Want[]> {
   const since = new Date(Date.now() - WANT_TTL_HOURS * 3600_000).toISOString();
   const { data } = await supabase
@@ -85,7 +102,7 @@ export async function loadCrewData(viewer: Awaited<ReturnType<typeof requireMemb
   const [members, entries, games, wants, recentIds, gatherings] = await Promise.all([
     loadMembers(supabase),
     loadEntries(supabase, rangeFrom, rangeTo),
-    loadGames(supabase),
+    loadGames(supabase).then((games) => withPlaytime(supabase, games)),
     loadActiveWants(supabase),
     loadRecentGameIds(supabase, me.id),
     loadGatherings(supabase, rangeFrom, rangeTo),

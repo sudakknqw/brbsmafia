@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getViewer, loadEntries, loadMembers, MAX_DAY_GAMES, MAX_WANTS, WANT_TTL_HOURS } from "@/lib/crew";
 import { deleteGatheringMessage, syncDiscord, syncGatheringMessage } from "@/lib/discord";
 import { dayStats } from "@/lib/overlap";
+import { resolveSteamId, steamConfigured, syncSteamPlaytime } from "@/lib/steamApi";
 import { addDays, gamingDay, hourStart, hoursToSlots, isValidTimezone, slotsToHours, weekdayIndex } from "@/lib/time";
 import type { DayEntry } from "@/lib/types";
 
@@ -304,6 +305,22 @@ export async function updateProfile(input: { name: string; avatarUrl?: string | 
   if (input.avatarUrl !== undefined) patch.avatar_url = input.avatarUrl;
   await viewer.supabase.from("profiles").update(patch).eq("id", viewer.user.id);
   changed();
+  return { error: null };
+}
+
+/** Ссылка на свой профиль Steam: по ней узнаём, во что компания чаще играет. */
+export async function setSteamProfile(link: string): Promise<{ error: string | null; warning?: string }> {
+  const { userId } = await member();
+  if (!steamConfigured()) return { error: "Steam ещё не подключён к сайту" };
+  const steamId = await resolveSteamId(link);
+  if (!steamId) return { error: "Не нашёл такой профиль. Скопируй ссылку со страницы своего профиля в Steam" };
+
+  const { error } = await createAdminClient().from("profiles").update({ steam_id: steamId }).eq("id", userId);
+  if (error) return { error: "Не получилось сохранить. Попробуй ещё раз" };
+  const sync = await syncSteamPlaytime(userId, steamId);
+  revalidatePath("/", "layout");
+  if (sync === "private")
+    return { error: null, warning: "Профиль сохранён, но игры в нём скрыты. В Steam: Профиль → Редактировать → Приватность → «Игровая информация»: Открытая" };
   return { error: null };
 }
 

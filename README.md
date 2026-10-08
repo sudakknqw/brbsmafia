@@ -18,6 +18,11 @@
 3. В Vercel: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_GROUP_ID` (ID группы, отрицательное число), `NEXT_PUBLIC_TELEGRAM_APP_URL` (ссылка из шага 1) → Redeploy.
 4. В Supabase запусти [`supabase/004_telegram.sql`](supabase/004_telegram.sql), затем `supabase/005_reminders.local.sql` (готовая копия с секретом) — это напоминания за час до игры.
 
+### 2.5. Steam (необязательно)
+1. Получи ключ на [steamcommunity.com/dev/apikey](https://steamcommunity.com/dev/apikey) (домен — `brbsmafia.vercel.app`).
+2. В Supabase запусти [`supabase/006_steam.sql`](supabase/006_steam.sql).
+3. В Vercel и `.env.local`: `STEAM_API_KEY` → Redeploy. Каждый при входе вставит ссылку на свой профиль; игры, в которые компания чаще играет, встанут выше. Обновляется раз в сутки.
+
 ### 3. Вебхук в канал
 В Discord: настройки канала → **Интеграции → Вебхуки → Новый вебхук** → **Копировать URL**.
 

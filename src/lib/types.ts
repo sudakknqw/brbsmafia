@@ -16,7 +16,14 @@ export type Game = {
   hero_url?: string | null;
   header_url?: string | null;
   logo_url?: string | null;
+  // Сколько вся компания играла в неё в Steam, в минутах (006_steam.sql).
+  played_recent?: number; // за последние 2 недели
+  played_total?: number;
 };
+
+/** Чаще запускаемые — выше: сначала по игре за последние 2 недели, потом за всё время. */
+export const byPlaytime = (a: Game, b: Game) =>
+  (b.played_recent ?? 0) - (a.played_recent ?? 0) || (b.played_total ?? 0) - (a.played_total ?? 0);
 
 export type DayEntry = {
   user_id: string;

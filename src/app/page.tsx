@@ -1,6 +1,8 @@
 import { LiveSync } from "@/components/LiveSync";
 import { HomeView } from "@/components/home/HomeView";
+import { SteamPrompt } from "@/components/steam/SteamPrompt";
 import { loadCrewData, loadMonth, requireMember } from "@/lib/crew";
+import { steamConfigured } from "@/lib/steamApi";
 import { gamingDay } from "@/lib/time";
 
 export default async function Home() {
@@ -11,6 +13,7 @@ export default async function Home() {
     <>
       <LiveSync timezone={data.me.timezone} meId={data.me.id} />
       <HomeView data={data} month={month} />
+      {!viewer.profile.steam_id && steamConfigured() && <SteamPrompt />}
     </>
   );
 }

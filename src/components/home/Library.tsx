@@ -8,7 +8,7 @@ import { NamesHint } from "@/components/NamesHint";
 import { Cover } from "@/components/GameArt";
 import { GameSearch } from "@/components/GameSearch";
 import { Sheet } from "@/components/Sheet";
-import type { Game, Member, Want } from "@/lib/types";
+import { byPlaytime, type Game, type Member, type Want } from "@/lib/types";
 
 
 /**
@@ -50,6 +50,7 @@ export function Library({
     .sort(
       (a, b) =>
         serverWants.filter((w) => w.game_id === b.id).length - serverWants.filter((w) => w.game_id === a.id).length ||
+        byPlaytime(a, b) ||
         a.name.localeCompare(b.name),
     );
 
