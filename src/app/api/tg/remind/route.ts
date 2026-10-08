@@ -116,7 +116,7 @@ export async function GET(request: NextRequest) {
     const names = r.people.map((p) => escapeHtml(p.name)).join(", ");
     for (const p of r.people) {
       if (!p.telegram_id) continue;
-      const text = `<b>${escapeHtml(r.game)}</b> в ${formatTime(r.start, p.timezone)}\nИдут: ${names}`;
+      const text = `<b>${escapeHtml(r.game)}</b> в ${formatTime(r.start, p.timezone)}\n${names}`;
       const day = gamingDay(r.start, p.timezone);
       const keyboard: Keyboard = [
         [
