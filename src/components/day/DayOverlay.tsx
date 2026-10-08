@@ -58,7 +58,8 @@ export function DayOverlayProvider({ data, children }: { data: CrewData; childre
       origin.current?.focus({ preventScroll: true });
     };
     if (reduceMotion()) return done();
-    // Содержимое гаснет, а сама панель сворачивается обратно в плитку.
+    // Плитка могла уехать за край ряда недели (на телефоне он листается вбок).
+    origin.current?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "instant" });
     // Содержимое уходит, панель сворачивается в плитку и в самом конце растворяется в ней.
     el.firstElementChild?.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 180, fill: "forwards" });
     el.animate([{ opacity: 1 }, { opacity: 1, offset: 0.65 }, { opacity: 0 }], { duration: 480, fill: "forwards" });
@@ -112,6 +113,8 @@ export function DayOverlayProvider({ data, children }: { data: CrewData; childre
   const nextDay = day && inWeek(addDays(day, 1)) ? addDays(day, 1) : null;
   const go = useCallback((d: string | null, to: 1 | -1) => {
     if (!d) return;
+    // Закрываться теперь нужно в плитку этого дня, а не в ту, из которой открывали.
+    origin.current = document.querySelector<HTMLElement>(`a.tile[href="/day/${d}"]`) ?? origin.current;
     setDir(to);
     setInvite(false);
     setDay(d);
