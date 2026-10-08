@@ -4,7 +4,7 @@ import type { CrewData } from "@/lib/views";
 import type { DayEntry, Game, Member, Want } from "@/lib/types";
 
 export function mockCrew(variant: "full" | "empty" = "full"): CrewData {
-  const me: Member = { id: "u-kirill", name: "Кирилл", avatar_url: null, timezone: "Europe/Moscow" };
+  const me: Member = { id: "u-kirill", name: "Кирилл", avatar_url: "https://cdn.discordapp.com/embed/avatars/0.png", timezone: "Europe/Moscow" };
   const members: Member[] = [
     me,
     { id: "u-lesha", name: "Лёша", avatar_url: null, timezone: "Asia/Yekaterinburg" },

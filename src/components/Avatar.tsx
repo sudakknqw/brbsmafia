@@ -17,7 +17,8 @@ export function Avatar({ id, name, url, size = 28, ring, className = "" }: Props
   };
   if (url) {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={url} alt={name} title={name} style={style} className={`shrink-0 rounded-full object-cover ${className}`} />;
+    // max-w-none: иначе в узком контейнере картинка сжимается по ширине и круг становится овалом.
+    return <img src={url} alt={name} title={name} style={style} className={`max-w-none shrink-0 rounded-full object-cover ${className}`} />;
   }
   return (
     <span
