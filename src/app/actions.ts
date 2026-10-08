@@ -6,7 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getViewer, loadEntries, loadMembers, MAX_DAY_GAMES, MAX_WANTS, WANT_TTL_HOURS } from "@/lib/crew";
 import { deleteGatheringMessage, syncDiscord, syncGatheringMessage } from "@/lib/discord";
 import { dayStats } from "@/lib/overlap";
-import { resolveSteamId, steamConfigured, syncSteamPlaytime } from "@/lib/steamApi";
+import { addSharedGames, dismissSteamGame, resolveSteamId, steamConfigured, syncSteamPlaytime } from "@/lib/steamApi";
 import { addDays, gamingDay, hourStart, hoursToSlots, isValidTimezone, slotsToHours, weekdayIndex } from "@/lib/time";
 import type { DayEntry } from "@/lib/types";
 
@@ -202,8 +202,11 @@ export async function setGameArt(gameId: number, field: ArtField, url: string | 
 /** Убрать игру у всех — вместе с её папкой своих картинок. */
 export async function deleteGame(gameId: number) {
   const { supabase } = await member();
+  const { data: game } = await supabase.from("games").select("steam_appid").eq("id", gameId).maybeSingle();
   const { error } = await supabase.from("games").delete().eq("id", gameId);
   if (error) return;
+  // Удалённую игру Steam не добавляем обратно автоматически.
+  if (game?.steam_appid) await dismissSteamGame(game.steam_appid);
   const bucket = createAdminClient().storage.from("games");
   const { data: files } = await bucket.list(String(gameId));
   if (files?.length) await bucket.remove(files.map((f) => `${gameId}/${f.name}`));
@@ -319,6 +322,9 @@ export async function setSteamProfile(link: string): Promise<{ error: string | n
   if (error) return { error: "Не получилось сохранить. Попробуй ещё раз" };
   const sync = await syncSteamPlaytime(userId, steamId);
   revalidatePath("/", "layout");
+  // Общие с компанией игры добавляются в фоне: проверка в магазине Steam занимает время.
+  // Открытые страницы подхватят их сами (LiveSync следит за таблицей игр).
+  if (sync === "ok") after(() => addSharedGames().catch((e) => console.error(e)));
   if (sync === "private")
     return { error: null, warning: "Профиль сохранён, но игры в нём скрыты. В Steam: Профиль → Редактировать → Приватность → «Игровая информация»: Открытая" };
   return { error: null };
