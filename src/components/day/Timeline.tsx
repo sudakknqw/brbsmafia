@@ -9,6 +9,7 @@ import { Sheet } from "@/components/Sheet";
 import { memberColor } from "@/lib/colors";
 import { bestWindow } from "@/lib/overlap";
 import { DAY_HOURS } from "@/lib/time";
+import { wheelToX } from "@/lib/wheel";
 import type { Game, Member } from "@/lib/types";
 import { plural, who } from "@/lib/words";
 import { busyPhrase, noMatchPhrase } from "@/lib/phrases";
@@ -366,7 +367,7 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
                 </span>
                 <span className="text-[13px] text-dim">во что хочешь, до {maxGames === 5 ? "пяти" : maxGames}</span>
               </div>
-              <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 py-1.5">
+              <div ref={wheelToX} className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 py-1.5">
                 {choices.map((g) => {
                   const on = picked.includes(g.id);
                   return (
