@@ -19,7 +19,7 @@ export function TopBar({ me, back }: { me: Member; back?: boolean }) {
         </Link>
       ) : (
         <Link href="/" aria-label="brbs mafia, на главную" className="transition hover:opacity-80">
-          <Wordmark className="h-[18px] sm:h-[21px]" />
+          <Wordmark className="h-[18px] w-auto sm:h-[21px]" />
         </Link>
       )}
       <div className="flex items-center gap-2.5">

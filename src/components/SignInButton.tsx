@@ -12,7 +12,8 @@ export function SignInButton({ next = "/" }: { next?: string }) {
       provider: "discord",
       options: {
         redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
-        scopes: "identify",
+        // guilds — чтобы проверить, что человек есть на нашем Discord-сервере.
+        scopes: "identify guilds",
       },
     });
   };

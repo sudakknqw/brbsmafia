@@ -19,22 +19,20 @@ export default async function InvitePage({ params }: PageProps<"/invite/[code]">
   const inviter = (invite?.profiles as unknown as { name: string } | null)?.name;
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-between px-6 py-10">
-      <p className="text-sm text-dim">Приглашение</p>
-
-      <div>
-        <h1>
-          <Wordmark className="h-[clamp(34px,10vw,46px)]" />
-          <span className="sr-only">brbs mafia</span>
-        </h1>
-        <p className="mt-3 text-[15px] text-dim">
-          {valid ? "Общее расписание и игры для своих" : "Ссылка устарела или неверная. Попроси новую у друзей."}
-        </p>
-      </div>
-
-      <div className="space-y-3">
-        {valid && <SignInButton next={`/join/${code}`} />}
-        {inviter && valid && <p className="text-center text-sm text-dim">Пригласил {inviter}</p>}
+    <main className="mx-auto flex min-h-dvh max-w-xl flex-col items-center justify-center gap-12 px-6 py-10 text-center">
+      <h1 className="anim-rise">
+        <Wordmark className="h-auto w-[min(82vw,620px)]" />
+        <span className="sr-only">brbs mafia</span>
+      </h1>
+      <div className="anim-rise w-full max-w-sm space-y-4" style={{ animationDelay: "0.1s" }}>
+        {valid ? (
+          <>
+            {inviter && <p className="text-[15px] text-dim">Зовёт {inviter}</p>}
+            <SignInButton next={`/join/${code}`} />
+          </>
+        ) : (
+          <p className="text-[15px] text-dim">Ссылка устарела или неверная. Попроси новую у друзей.</p>
+        )}
       </div>
     </main>
   );
