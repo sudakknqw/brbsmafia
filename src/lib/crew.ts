@@ -2,7 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "./supabase/server";
-import type { DayEntry, Game, Gathering, Member, Want } from "./types";
+import { personalOrder, type DayEntry, type Game, type Gathering, type Member, type Want } from "./types";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
@@ -58,7 +58,7 @@ export async function loadGames(supabase: Supabase): Promise<Game[]> {
 }
 
 /** Игры с наигранным временем всей компании. Если миграции 006 ещё нет — просто без него. */
-async function withPlaytime(supabase: Supabase, games: Game[]): Promise<Game[]> {
+export async function withPlaytime(supabase: Supabase, games: Game[]): Promise<Game[]> {
   const { data, error } = await supabase.from("steam_playtime").select("steam_appid, recent_minutes, total_minutes");
   if (error || !data?.length) return games;
   const sum = new Map<number, { recent: number; total: number }>();
@@ -100,7 +100,7 @@ export async function loadCrewData(viewer: Awaited<ReturnType<typeof requireMemb
   const today = gamingDay(now, me.timezone);
   const rangeFrom = from ?? addDays(weekStart(today), -1);
   const rangeTo = to ?? addDays(weekStart(today), 7);
-  const [members, entries, games, wants, recentIds, gatherings] = await Promise.all([
+  const [members, entries, allGames, wants, recentIds, gatherings] = await Promise.all([
     loadMembers(supabase),
     loadEntries(supabase, rangeFrom, rangeTo),
     loadGames(supabase).then((games) => withPlaytime(supabase, games)),
@@ -108,6 +108,8 @@ export async function loadCrewData(viewer: Awaited<ReturnType<typeof requireMemb
     loadRecentGameIds(supabase, me.id),
     loadGatherings(supabase, rangeFrom, rangeTo),
   ]);
+  // Игры приходят уже в твоём порядке — так их и показывают библиотека и выбор игр на день.
+  const games = personalOrder(allGames, me.library_order);
   const recent = recentIds.map((id) => games.find((g) => g.id === id)).filter((g): g is Game => !!g);
   const fallbackGameId = games.length ? games[Math.floor(Math.random() * games.length)].id : null;
   return { me, members, entries, games, wants, recent, gatherings, fallbackGameId, now, today };

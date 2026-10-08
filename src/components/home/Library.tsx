@@ -1,36 +1,52 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
-import { deleteGame } from "@/app/actions";
+import { useOptimistic, useRef, useState, useSyncExternalStore, useTransition, type ReactNode } from "react";
+import {
+  closestCenter,
+  DndContext,
+  MouseSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import { arrayMove, rectSortingStrategy, SortableContext, useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { deleteGame, saveLibraryOrder } from "@/app/actions";
 import { GameArtEditor } from "@/components/GameArtEditor";
 import { AvatarStack } from "@/components/Avatar";
 import { NamesHint } from "@/components/NamesHint";
 import { Cover } from "@/components/GameArt";
 import { GameSearch } from "@/components/GameSearch";
 import { Sheet } from "@/components/Sheet";
-import { byPlaytime, type Game, type Member, type Want } from "@/lib/types";
+import { haptic } from "@/lib/tg";
+import type { Game, Member, Want } from "@/lib/types";
 
+// Колонок в сетке: 3 на телефоне, 4 на планшете (sm), 6 на компьютере (lg).
+// Нужно знать в коде: свёрнутая библиотека — это ровно два ряда.
+const COLUMN_QUERIES = ["(min-width: 1024px)", "(min-width: 640px)"] as const;
+function subscribeColumns(onChange: () => void) {
+  const lists = COLUMN_QUERIES.map((q) => window.matchMedia(q));
+  lists.forEach((l) => l.addEventListener("change", onChange));
+  return () => lists.forEach((l) => l.removeEventListener("change", onChange));
+}
+const columnsNow = () => (window.matchMedia(COLUMN_QUERIES[0]).matches ? 6 : window.matchMedia(COLUMN_QUERIES[1]).matches ? 4 : 3);
 
 /**
  * Общая библиотека. Нажатие на обложку ставит игру в твой статус на сутки.
+ * Порядок у каждого свой: игры перетаскиваются (на телефоне — зажать обложку),
+ * а выбранные почаще сами понемногу поднимаются (см. bumpGames).
  * Хотелки «живые» (меняются сразу при нажатии) и общие со всей главной — см. HomeLive.
  */
-// Свёрнутая библиотека — два ряда: 3, 4 или 6 колонок в зависимости от ширины экрана.
-const ROWS2 = { phone: 6, tablet: 8, desktop: 12 };
-const collapsedClass = (i: number) =>
-  i < ROWS2.phone ? "" : i < ROWS2.tablet ? "hidden sm:block" : i < ROWS2.desktop ? "hidden lg:block" : "hidden";
-
 export function Library({
   games,
   wants,
-  serverWants,
   members,
   meId,
   onToggle,
 }: {
   games: Game[];
   wants: Want[];
-  serverWants: Want[];
   members: Member[];
   meId: string;
   onToggle: (gameId: number) => void;
@@ -41,6 +57,41 @@ export function Library({
   const [hidden, setHidden] = useState<number[]>([]);
   const [expanded, setExpanded] = useState(false);
   const section = useRef<HTMLElement>(null);
+  const justDragged = useRef(false);
+  const [, start] = useTransition();
+  const columns = useSyncExternalStore(subscribeColumns, columnsNow, () => 3);
+
+  // Порядок с сервера уже твой; после перетаскивания показываем новый сразу, не дожидаясь ответа.
+  const [orderIds, applyOrder] = useOptimistic(
+    games.map((g) => g.id),
+    (_: number[], next: number[]) => next,
+  );
+  const order = orderIds
+    .map((id) => games.find((g) => g.id === id))
+    .filter((g): g is Game => !!g && !hidden.includes(g.id));
+  const collapsedCount = columns * 2;
+  const shown = expanded ? order : order.slice(0, collapsedCount);
+
+  const sensors = useSensors(
+    // Мышью — потянуть на несколько пикселей; пальцем — зажать, чтобы не мешать прокрутке.
+    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 280, tolerance: 8 } }),
+  );
+
+  const onDragEnd = ({ active, over }: DragEndEvent) => {
+    // Отпущенная после перетаскивания обложка не должна ещё и нажаться.
+    justDragged.current = true;
+    setTimeout(() => (justDragged.current = false), 50);
+    if (!over || active.id === over.id) return;
+    const ids = order.map((g) => g.id);
+    const next = arrayMove(ids, ids.indexOf(Number(active.id)), ids.indexOf(Number(over.id)));
+    haptic("select");
+    start(async () => {
+      applyOrder(next);
+      // Не сохранилось (нет сети) — порядок сам вернётся к прежнему, когда переход закончится.
+      await saveLibraryOrder(next).catch(() => undefined);
+    });
+  };
 
   const toggleExpanded = () => {
     // Свернули, стоя внизу длинного списка, — возвращаемся к началу библиотеки.
@@ -52,27 +103,14 @@ export function Library({
       if (el && el.getBoundingClientRect().top < 0) el.scrollIntoView({ block: "start", behavior: "smooth" });
     });
   };
-  const [, start] = useTransition();
-  const live = wants;
+
   const artGame = games.find((g) => g.id === artGameId) ?? null;
 
   const wantersOf = (gameId: number) =>
-    live
+    wants
       .filter((w) => w.game_id === gameId)
       .map((w) => members.find((m) => m.id === w.user_id))
       .filter((m): m is Member => !!m);
-
-  // Порядок не прыгает при каждом нажатии: сортируем по серверным данным.
-  const order = [...games]
-    .filter((g) => !hidden.includes(g.id))
-    .sort(
-      (a, b) =>
-        serverWants.filter((w) => w.game_id === b.id).length - serverWants.filter((w) => w.game_id === a.id).length ||
-        byPlaytime(a, b) ||
-        a.name.localeCompare(b.name),
-    );
-
-  const toggle = onToggle;
 
   const remove = (game: Game) => {
     if (!confirm(`Убрать «${game.name}» из библиотеки у всех?`)) return;
@@ -102,7 +140,7 @@ export function Library({
       <p className="mb-5 text-[15px] text-dim">
         {editing
           ? "Нажми на игру, чтобы поменять её картинки или убрать из библиотеки."
-          : "Нажми на обложку, и игра встанет в твой статус на сутки. Можно выбрать до трёх."}
+          : "Нажми на обложку, и игра встанет в твой статус на сутки. Порядок свой: перетаскивай игры, зажав обложку."}
       </p>
 
       {order.length === 0 ? (
@@ -114,54 +152,59 @@ export function Library({
           +
         </button>
       ) : (
-        <div className="grid grid-cols-3 gap-x-3 gap-y-6 sm:grid-cols-4 lg:grid-cols-6">
-          {order.map((g, i) => {
-            const wanters = wantersOf(g.id);
-            const mine = wanters.some((m) => m.id === meId);
-            return (
-              <div key={g.id} className={expanded ? "" : collapsedClass(i)}>
-                <button
-                  onClick={() => (editing ? setArtGameId(g.id) : toggle(g.id))}
-                  aria-pressed={editing ? undefined : mine}
-                  aria-label={editing ? `Изменить ${g.name}` : g.name}
-                  className={`tile relative block w-full rounded-[10px] ${mine && !editing ? "tile-on" : ""} ${editing ? "opacity-70" : ""}`}
-                >
-                  <Cover key={g.id} game={g} />
-                  {mine && !editing && (
-                    <span className="anim-pop absolute top-2 right-2 flex size-6 items-center justify-center rounded-full bg-fg text-ink">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                        <path d="M5 12l5 5L19 7" />
-                      </svg>
-                    </span>
-                  )}
-                  {editing && (
-                    <span className="anim-pop absolute top-2 right-2 flex size-7 items-center justify-center rounded-full bg-fg text-ink">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                        <path d="M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4" />
-                      </svg>
-                    </span>
-                  )}
-                </button>
-                <p className="mt-2.5 truncate text-[14px] font-medium">{g.name}</p>
-                <div className="mt-1.5 h-[22px]">
-                  {wanters.length > 0 ? (
-                    <NamesHint names={wanters.map((m) => m.name)}>
-                      <AvatarStack people={wanters} size={22} />
-                    </NamesHint>
-                  ) : (
-                    <span className="text-[13px] text-faint">пока никто</span>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={() => haptic("tap")} onDragEnd={onDragEnd}>
+          <SortableContext items={shown.map((g) => g.id)} strategy={rectSortingStrategy}>
+            <div className="grid grid-cols-3 gap-x-3 gap-y-6 sm:grid-cols-4 lg:grid-cols-6">
+              {shown.map((g) => {
+                const wanters = wantersOf(g.id);
+                const mine = wanters.some((m) => m.id === meId);
+                return (
+                  <SortableTile key={g.id} id={g.id}>
+                    <button
+                      onClick={() => {
+                        if (justDragged.current) return;
+                        if (editing) setArtGameId(g.id);
+                        else onToggle(g.id);
+                      }}
+                      aria-pressed={editing ? undefined : mine}
+                      aria-label={editing ? `Изменить ${g.name}` : g.name}
+                      className={`tile relative block w-full rounded-[10px] ${mine && !editing ? "tile-on" : ""} ${editing ? "opacity-70" : ""}`}
+                    >
+                      <Cover key={g.id} game={g} />
+                      {mine && !editing && (
+                        <span className="anim-pop absolute top-2 right-2 flex size-6 items-center justify-center rounded-full bg-fg text-ink">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <path d="M5 12l5 5L19 7" />
+                          </svg>
+                        </span>
+                      )}
+                      {editing && (
+                        <span className="anim-pop absolute top-2 right-2 flex size-7 items-center justify-center rounded-full bg-fg text-ink">
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <path d="M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4" />
+                          </svg>
+                        </span>
+                      )}
+                    </button>
+                    <p className="mt-2.5 truncate text-[14px] font-medium">{g.name}</p>
+                    <div className="mt-1.5 h-[22px]">
+                      {wanters.length > 0 ? (
+                        <NamesHint names={wanters.map((m) => m.name)}>
+                          <AvatarStack people={wanters} size={22} />
+                        </NamesHint>
+                      ) : (
+                        <span className="text-[13px] text-faint">пока никто</span>
+                      )}
+                    </div>
+                  </SortableTile>
+                );
+              })}
+            </div>
+          </SortableContext>
+        </DndContext>
       )}
-      {order.length > ROWS2.phone && (
-        <button
-          onClick={toggleExpanded}
-          className={`mt-6 w-full rounded-full bg-glass py-3 text-[15px] font-medium transition hover:bg-glass2 ${order.length <= ROWS2.tablet ? "sm:hidden" : ""} ${order.length <= ROWS2.desktop ? "lg:hidden" : ""}`}
-        >
+      {order.length > collapsedCount && (
+        <button onClick={toggleExpanded} className="mt-6 w-full rounded-full bg-glass py-3 text-[15px] font-medium transition hover:bg-glass2">
           {expanded ? "Свернуть" : `Показать все (${order.length})`}
         </button>
       )}
@@ -179,5 +222,20 @@ export function Library({
         {artGame && <GameArtEditor key={artGame.id} game={artGame} onRemove={() => remove(artGame)} />}
       </Sheet>
     </section>
+  );
+}
+
+/** Ячейка, которую можно перетаскивать. Поднятая — чуть крупнее и поверх остальных. */
+function SortableTile({ id, children }: { id: number; children: ReactNode }) {
+  const { setNodeRef, listeners, transform, transition, isDragging } = useSortable({ id });
+  return (
+    <div
+      ref={setNodeRef}
+      {...listeners}
+      style={{ transform: CSS.Translate.toString(transform), transition }}
+      className={`touch-manipulation select-none [-webkit-touch-callout:none] ${isDragging ? "relative z-20 scale-105 opacity-90 drop-shadow-[0_18px_30px_rgba(0,0,0,0.6)]" : ""}`}
+    >
+      {children}
+    </div>
   );
 }

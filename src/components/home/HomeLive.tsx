@@ -51,7 +51,7 @@ export function HomeLive({ data, footer }: { data: CrewData; footer: ReactNode }
         <AmbientTail />
         <WeekRow week={home.week} total={home.total} />
         <StatusRow statuses={home.statuses} meId={meId} viewerTz={data.me.timezone} />
-        <Library games={data.games} wants={wants} serverWants={data.wants} members={data.members} meId={meId} onToggle={toggle} />
+        <Library games={data.games} wants={wants} members={data.members} meId={meId} onToggle={toggle} />
         {footer}
       </main>
     </DayOverlayProvider>

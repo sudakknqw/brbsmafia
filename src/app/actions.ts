@@ -3,12 +3,12 @@
 import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getViewer, loadEntries, loadMembers, MAX_DAY_GAMES, MAX_WANTS, WANT_TTL_HOURS } from "@/lib/crew";
+import { getViewer, loadEntries, loadGames, loadMembers, withPlaytime, MAX_DAY_GAMES, MAX_WANTS, WANT_TTL_HOURS } from "@/lib/crew";
 import { deleteGatheringMessage, syncDiscord, syncGatheringMessage } from "@/lib/discord";
 import { dayStats } from "@/lib/overlap";
 import { addSharedGames, dismissSteamGame, resolveSteamId, steamConfigured, syncSteamPlaytime } from "@/lib/steamApi";
 import { addDays, gamingDay, hourStart, hoursToSlots, isValidTimezone, slotsToHours, weekdayIndex } from "@/lib/time";
-import type { DayEntry } from "@/lib/types";
+import { personalOrder, type DayEntry } from "@/lib/types";
 
 async function member() {
   const viewer = await getViewer();
@@ -31,12 +31,42 @@ async function touchRecent(supabase: Awaited<ReturnType<typeof member>>["supabas
     .upsert(gameIds.map((game_id) => ({ user_id: userId, game_id, used_at: now })));
 }
 
+/**
+ * Выбранные игры поднимаются в твоём порядке на одно место:
+ * то, что выбираешь чаще, постепенно всплывает наверх библиотеки.
+ */
+async function bumpGames(supabase: Awaited<ReturnType<typeof member>>["supabase"], userId: string, gameIds: number[]) {
+  if (!gameIds.length) return;
+  const [{ data: profile, error }, games] = await Promise.all([
+    supabase.from("profiles").select("library_order").eq("id", userId).maybeSingle(),
+    loadGames(supabase).then((g) => withPlaytime(supabase, g)),
+  ]);
+  if (error || !profile) return; // миграции 007 ещё нет
+  const ids = personalOrder(games, profile.library_order ?? []).map((g) => g.id);
+  for (const id of gameIds) {
+    const i = ids.indexOf(id);
+    if (i > 0) [ids[i - 1], ids[i]] = [ids[i], ids[i - 1]];
+  }
+  await supabase.from("profiles").update({ library_order: ids }).eq("id", userId);
+}
+
+/** Свой порядок библиотеки после перетаскивания. */
+export async function saveLibraryOrder(ids: number[]) {
+  const { supabase, userId } = await member();
+  const clean = [...new Set(ids.map(Number).filter((n) => Number.isInteger(n) && n > 0))].slice(0, 1000);
+  await supabase.from("profiles").update({ library_order: clean }).eq("id", userId);
+  revalidatePath("/", "layout");
+}
+
 // ——— Время ———
 
 export async function saveDay(day: string, hours: number[], gameIds: number[]) {
   if (!isDay(day)) return;
   const { supabase, userId, tz } = await member();
   const games = [...new Set(gameIds)].slice(0, MAX_DAY_GAMES);
+  // Поднимаем только впервые выбранные на этот день: пересохранение тех же игр не считается.
+  const { data: before } = await supabase.from("day_entries").select("game_ids").eq("user_id", userId).eq("day", day).maybeSingle();
+  const added = games.filter((id) => !(before?.game_ids ?? []).includes(id));
 
   if (!hours.length) {
     await supabase.from("day_entries").delete().eq("user_id", userId).eq("day", day);
@@ -50,6 +80,7 @@ export async function saveDay(day: string, hours: number[], gameIds: number[]) {
       updated_at: new Date().toISOString(),
     });
     await touchRecent(supabase, userId, games);
+    after(() => bumpGames(supabase, userId, added).catch((e) => console.error(e)));
   }
   changed();
 }
@@ -140,6 +171,7 @@ export async function toggleWant(gameId: number) {
     if (drop.length) await supabase.from("wants").delete().eq("user_id", userId).in("game_id", drop);
     await supabase.from("wants").insert({ user_id: userId, game_id: gameId });
     await touchRecent(supabase, userId, [gameId]);
+    after(() => bumpGames(supabase, userId, [gameId]).catch((e) => console.error(e)));
   }
   changed();
 }

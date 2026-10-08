@@ -5,6 +5,8 @@ export type Member = {
   name: string;
   avatar_url: string | null;
   timezone: string;
+  /** Свой порядок игр в библиотеке (007_library_order.sql); есть только у своего профиля. */
+  library_order?: number[];
 };
 
 export type Game = {
@@ -20,6 +22,16 @@ export type Game = {
   played_recent?: number; // за последние 2 недели
   played_total?: number;
 };
+
+/**
+ * Игры в твоём порядке: сначала из сохранённого списка, остальные (новые) — в конце,
+ * между собой — по тому, во что компания больше играет.
+ */
+export function personalOrder(games: Game[], saved: number[] = []): Game[] {
+  const pos = new Map(saved.map((id, i) => [Number(id), i]));
+  const at = (g: Game) => pos.get(g.id) ?? Number.MAX_SAFE_INTEGER;
+  return [...games].sort((a, b) => at(a) - at(b) || byPlaytime(a, b) || a.name.localeCompare(b.name));
+}
 
 /** Чаще запускаемые — выше: сначала по игре за последние 2 недели, потом за всё время. */
 export const byPlaytime = (a: Game, b: Game) =>

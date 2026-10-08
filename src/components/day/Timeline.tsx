@@ -10,7 +10,7 @@ import { memberColor } from "@/lib/colors";
 import { bestWindow } from "@/lib/overlap";
 import { DAY_HOURS } from "@/lib/time";
 import { wheelToX } from "@/lib/wheel";
-import { byPlaytime, type Game, type Member } from "@/lib/types";
+import type { Game, Member } from "@/lib/types";
 import { plural, who } from "@/lib/words";
 import { busyPhrase, noMatchPhrase } from "@/lib/phrases";
 import { NamesHint } from "@/components/NamesHint";
@@ -168,8 +168,8 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
   const togglePick = (id: number) =>
     setPicked((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : prev.length >= maxGames ? prev : [...prev, id]));
 
-  // Сначала недавно выбранные тобой, дальше — во что компания чаще играет в Steam.
-  const choices = [...recent, ...games.filter((g) => !recent.some((r) => r.id === g.id)).sort(byPlaytime)];
+  // Сначала недавно выбранные тобой, дальше — в твоём порядке из библиотеки.
+  const choices = [...recent, ...games.filter((g) => !recent.some((r) => r.id === g.id))];
   const preview: Range | null = anchor !== null ? [Math.min(anchor, hover ?? anchor), Math.max(anchor, hover ?? anchor) + 1] : null;
 
   const hint = range
