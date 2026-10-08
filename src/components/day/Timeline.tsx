@@ -10,7 +10,8 @@ import { memberColor } from "@/lib/colors";
 import { bestWindow } from "@/lib/overlap";
 import { DAY_HOURS } from "@/lib/time";
 import type { Game, Member } from "@/lib/types";
-import { people, plural } from "@/lib/words";
+import { plural, who } from "@/lib/words";
+import { NamesHint } from "@/components/NamesHint";
 
 type Row = { member: Member; hours: number[]; state: "free" | "busy" | "silent"; note: string | null };
 type Range = [number, number];
@@ -97,6 +98,12 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
   others.forEach((r) => r.hours.forEach((h) => counts[h]++));
   if (range) for (let h = range[0]; h < range[1]; h++) counts[h]++;
   const best = bestWindow(counts);
+  const bestNames = best
+    ? [
+        ...(range && range[0] <= best.from && best.from < range[1] ? ["ты"] : []),
+        ...others.filter((r) => r.hours.includes(best.from)).map((r) => r.member.name),
+      ]
+    : [];
 
   // Сбой сети не должен ронять шкалу: время останется на экране, а данные подтянутся при обновлении.
   const run = (fn: () => Promise<void>) =>
@@ -163,7 +170,14 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <p className={`text-[15px] ${anchor !== null || (invite && !range && !busy) ? "font-medium text-fg" : "text-dim"}`}>{hint}</p>
         <p className="text-[13px] text-dim tabular-nums">
-          {best ? `Все вместе ${hourLabels[best.from]} – ${hourLabels[best.to]}, свободны ${people(best.count)}` : "Пока никто не совпал"}
+          {best ? (
+            <>
+              Все вместе {hourLabels[best.from]} – {hourLabels[best.to]},{" "}
+              <NamesHint names={bestNames}>{who(bestNames, "свободен", "свободны")}</NamesHint>
+            </>
+          ) : (
+            "Пока никто не совпал"
+          )}
         </p>
       </div>
 

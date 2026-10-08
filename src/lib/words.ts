@@ -13,3 +13,13 @@ export function plural(n: number, one: string, few: string, many: string): strin
   return many;
 }
 
+
+/**
+ * Кто именно: один — по нику («Хочет Лёша»), двое — оба ника
+ * («Хотят Лёша и Маша»), трое и больше — числом («Хотят трое»).
+ */
+export function who(names: string[], one: string, many: string): string {
+  if (names.length === 1) return `${one} ${names[0]}`;
+  if (names.length === 2) return `${many} ${names[0]} и ${names[1]}`;
+  return `${many} ${people(names.length)}`;
+}

@@ -12,7 +12,6 @@ export function useOpenDay() {
   return useContext(DayOverlayContext);
 }
 
-const DATE = /^\d{4}-\d{2}-\d{2}$/;
 // Плавное торможение без «зависания» в конце, как у раскрытия карточек в iOS.
 const EASE = "cubic-bezier(0.32, 0.72, 0, 1)";
 const FULL = "inset(0px 0px 0px 0px round 0px)";
@@ -30,9 +29,8 @@ function clipFrom(el: HTMLElement | null) {
 
 /**
  * Раскрывающийся день: плитка растягивается на весь экран (clip-path),
- * а при закрытии сворачивается обратно в неё. День пишется в адрес после #
- * (/#2026-10-10): «Назад» закрывает его, а обновление данных страницы
- * не уводит на отдельный /day/… — Next смотрит только на путь, не на #.
+ * а при закрытии сворачивается обратно в неё. Адрес не меняется, но в истории
+ * появляется шаг — «Назад» в браузере или на телефоне закрывает день.
  */
 export function DayOverlayProvider({ data, children }: { data: CrewData; children: ReactNode }) {
   const [day, setDay] = useState<string | null>(null);
@@ -72,17 +70,15 @@ export function DayOverlayProvider({ data, children }: { data: CrewData; childre
     if (pushed.current) {
       pushed.current = false;
       history.back(); // popstate ниже запустит анимацию
-    } else {
-      history.replaceState(history.state, "", location.pathname + location.search);
-      animateClose();
-    }
+    } else animateClose();
   }, [animateClose]);
 
   const open = useCallback<OpenDay>((d, el, withInvite = false) => {
     origin.current = el;
     setInvite(withInvite);
     setDay(d);
-    history.pushState(history.state, "", `#${d}`);
+    // Адрес не меняем: только запись в истории, чтобы «Назад» закрывал день.
+    history.pushState({ ...history.state, brbsDay: d }, "", location.href);
     pushed.current = true;
   }, []);
 
@@ -100,14 +96,6 @@ export function DayOverlayProvider({ data, children }: { data: CrewData; childre
       easing: EASE,
     });
   }, [day]);
-
-  // Открыли страницу сразу с днём в адресе (обновили страницу) — показываем его.
-  useEffect(() => {
-    const fromHash = location.hash.slice(1);
-    if (!DATE.test(fromHash)) return;
-    const timer = setTimeout(() => setDay(fromHash));
-    return () => clearTimeout(timer);
-  }, []);
 
   // Кнопка «Назад»: закрываем с анимацией.
   useEffect(() => {

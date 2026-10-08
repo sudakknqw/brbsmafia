@@ -3,6 +3,7 @@
 import { useOptimistic, useState, useTransition } from "react";
 import { deleteGame, toggleWant } from "@/app/actions";
 import { AvatarStack } from "@/components/Avatar";
+import { NamesHint } from "@/components/NamesHint";
 import { Cover } from "@/components/GameArt";
 import { GameSearch } from "@/components/GameSearch";
 import { Sheet } from "@/components/Sheet";
@@ -115,7 +116,13 @@ export function Library({ games, wants, members, meId }: { games: Game[]; wants:
                 </button>
                 <p className="mt-2.5 truncate text-[14px] font-medium">{g.name}</p>
                 <div className="mt-1.5 h-[22px]">
-                  {wanters.length > 0 ? <AvatarStack people={wanters} size={22} /> : <span className="text-[13px] text-faint">пока никто</span>}
+                  {wanters.length > 0 ? (
+                    <NamesHint names={wanters.map((m) => m.name)}>
+                      <AvatarStack people={wanters} size={22} />
+                    </NamesHint>
+                  ) : (
+                    <span className="text-[13px] text-faint">пока никто</span>
+                  )}
                 </div>
               </div>
             );

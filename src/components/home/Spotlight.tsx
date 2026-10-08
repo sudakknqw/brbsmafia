@@ -8,7 +8,8 @@ import { AvatarStack } from "@/components/Avatar";
 import { Ambient, HeroArt, Logo } from "@/components/GameArt";
 import { TopBar } from "@/components/TopBar";
 import { AmbientTail } from "@/components/AmbientTail";
-import { people } from "@/lib/words";
+import { who } from "@/lib/words";
+import { NamesHint } from "@/components/NamesHint";
 import type { Member } from "@/lib/types";
 import type { EditorSeed, Spotlight as SpotlightModel } from "@/lib/views";
 
@@ -23,7 +24,7 @@ export function Spotlight({ me, spotlight, today }: Props) {
   const openDay = useOpenDay();
   const [busy, setBusyOptimistic] = useState(today.busy);
   const [, start] = useTransition();
-  const { game, when, freeCount } = spotlight;
+  const { game, when } = spotlight;
   const marked = today.initialHours.length > 0;
 
   const toggleBusy = () => {
@@ -31,12 +32,13 @@ export function Spotlight({ me, spotlight, today }: Props) {
     start(() => (busy ? clearDay(today.day) : setBusy(today.day)));
   };
 
+  const names = spotlight.people.map((p) => (p.id === me.id ? "ты" : p.name));
   const caption = when
     ? game
-      ? `Свободны ${people(freeCount)}, больше всего хотят сюда`
-      : `Свободны ${people(freeCount)}. Осталось выбрать игру`
-    : game && spotlight.people.length
-      ? `Хотят ${people(spotlight.people.length)}. Осталось совпасть по времени`
+      ? `${who(names, "Свободен", "Свободны")}, больше всего хотят сюда`
+      : `${who(names, "Свободен", "Свободны")}. Осталось выбрать игру`
+    : game && names.length
+      ? `${who(names, "Хочет", "Хотят")}. Осталось совпасть по времени`
       : "Отметь, когда свободен, и выбери, во что хочешь";
 
   return (
@@ -67,8 +69,10 @@ export function Spotlight({ me, spotlight, today }: Props) {
         </div>
 
         <div className="anim-rise flex items-center gap-3" style={{ animationDelay: "0.35s" }}>
-          {spotlight.people.length > 0 && <AvatarStack people={spotlight.people} size={28} max={8} />}
-          <p className="text-[15px] text-dim">{caption}</p>
+          <NamesHint names={spotlight.people.map((p) => p.name)} className="gap-3">
+            {spotlight.people.length > 0 && <AvatarStack people={spotlight.people} size={28} max={8} />}
+            <span className="text-[15px] text-dim">{caption}</span>
+          </NamesHint>
         </div>
 
         <div className="anim-rise mt-7 flex flex-wrap gap-2.5" style={{ animationDelay: "0.45s" }}>
