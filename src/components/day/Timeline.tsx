@@ -67,7 +67,7 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
     : anchor !== null
       ? `${hourLabels[preview![0]]} – ${hourLabels[preview![1]]}, ${duration(preview!)}. Нажми, до какого часа`
       : busy
-        ? "Ты отметил, что не сможешь. Нажми на шкалу, если планы поменялись"
+        ? "На этот день у тебя NO. Нажми на шкалу, если планы поменялись"
         : "Нажми в своей строке, с какого часа ты свободен";
   // На телефоне время выбирается на циферблате — подсказка другая.
   const phoneHint = !range && anchor === null && !busy ? "Нажми на свою строку, чтобы отметить время" : null;
