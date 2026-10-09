@@ -244,7 +244,9 @@ export async function setGameArt(gameId: number, field: ArtField, url: string | 
   const { supabase } = await member();
   if (!ART_FIELDS.includes(field)) return;
   const folder = `${artRoot()}${gameId}/`;
-  if (url !== null && (typeof url !== "string" || !url.startsWith(folder))) return;
+  // Только файл прямо в папке этой игры (вида cover-1760000000000.webp): без «..» и вложенных путей,
+  // иначе через замену картинки можно было бы удалить чужую (удаление идёт служебным ключом).
+  if (url !== null && (typeof url !== "string" || !url.startsWith(folder) || !/^[a-z]+-\d+\.[a-z0-9]+$/.test(url.slice(folder.length)))) return;
 
   const { data: before } = await supabase.from("games").select(field).eq("id", gameId).maybeSingle<Record<ArtField, string | null>>();
   const { error } = await supabase.from("games").update({ [field]: url }).eq("id", gameId);
