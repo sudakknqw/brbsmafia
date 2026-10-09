@@ -1,4 +1,5 @@
 import "server-only";
+import { crewTimezone } from "./crewTime";
 import { createAdminClient } from "./supabase/admin";
 import { dayStats, entryFor } from "./overlap";
 import { busyPhrase, noMatchPhrase, silentPhrase } from "./phrases";
@@ -17,7 +18,7 @@ export async function syncDiscord() {
   const webhook = process.env.DISCORD_WEBHOOK_URL;
   if (!webhook) return;
 
-  const tz = process.env.CREW_TIMEZONE || "Europe/Moscow";
+  const tz = crewTimezone();
   const day = gamingDay(new Date(), tz);
   const db = createAdminClient();
 

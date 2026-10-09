@@ -135,7 +135,11 @@ export async function loadCrewData(viewer: Awaited<ReturnType<typeof requireMemb
   return { me, members, entries, games, wants, recent, gatherings, fallbackGameId, now, today };
 }
 
-/** Сборы за период. Если таблиц ещё нет (миграцию не запускали) — просто пусто. */
+/**
+ * Сборы за период. Если таблиц ещё нет (миграцию не запускали) — просто пусто.
+ * day у сбора — игровой день по часам компании, у зрителя он может быть соседним:
+ * поэтому период берут с запасом в день, а к дню сбор привязывают по starts_at (gatheringView).
+ */
 export async function loadGatherings(supabase: Supabase, from: string, to: string): Promise<Gathering[]> {
   const { data, error } = await supabase
     .from("gatherings")

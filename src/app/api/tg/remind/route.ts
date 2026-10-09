@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { dayStats, entryFor } from "@/lib/overlap";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { crewTimezone } from "@/lib/crewTime";
 import { escapeHtml, sendMessage, type Keyboard } from "@/lib/telegram";
 import { addDays, formatTime, gamingDay, hourStart } from "@/lib/time";
 import type { DayEntry, Game, Gathering, Member } from "@/lib/types";
@@ -40,7 +41,7 @@ export async function GET(request: NextRequest) {
   if (!process.env.TELEGRAM_BOT_TOKEN) return NextResponse.json({ ok: false, error: "no-bot" }, { status: 503 });
 
   const db = createAdminClient();
-  const tz = process.env.CREW_TIMEZONE || "Europe/Moscow";
+  const tz = crewTimezone();
   const now = new Date();
   const today = gamingDay(now, tz);
   const soon = (d: Date) => d.getTime() > now.getTime() && d.getTime() - now.getTime() <= HOUR;

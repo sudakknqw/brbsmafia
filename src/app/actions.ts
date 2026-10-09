@@ -3,6 +3,7 @@
 import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { crewTimezone } from "@/lib/crewTime";
 import { getViewer, loadEntries, loadGames, loadMembers, withPlaytime, MAX_DAY_GAMES, MAX_WANTS, WANT_TTL_HOURS } from "@/lib/crew";
 import { deleteGatheringMessage, syncDiscord, syncGatheringMessage } from "@/lib/discord";
 import { dayStats } from "@/lib/overlap";
@@ -308,7 +309,8 @@ export async function startGathering(day: string, gameId: number): Promise<{ err
   const { data: created, error } = await supabase
     .from("gatherings")
     .insert({
-      day,
+      // Окно считали по твоим часам, но день сессии — по часам компании, как и из кнопки в Telegram.
+      day: gamingDay(startsAt, crewTimezone()),
       starts_at: startsAt.toISOString(),
       ends_at: endsAt.toISOString(),
       game_id: game.id,
@@ -318,7 +320,7 @@ export async function startGathering(day: string, gameId: number): Promise<{ err
     .select("id")
     .single();
   if (error) {
-    // day уникален: на эту дату создателя уже есть сбор (другое окно).
+    // day уникален: на этот игровой день компании уже есть сбор (другое окно).
     return { error: error.code === "23505" ? "На этот день уже есть сессия" : "Не получилось начать сессию. Попробуй ещё раз." };
   }
 

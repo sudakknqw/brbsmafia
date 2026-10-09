@@ -4,6 +4,7 @@ import { loadEntries, loadMembers } from "@/lib/crew";
 import { syncDiscord, syncGatheringMessage } from "@/lib/discord";
 import { dayStats } from "@/lib/overlap";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { crewTimezone } from "@/lib/crewTime";
 import { answerCallback, editKeyboard, webhookSecret } from "@/lib/telegram";
 import { addDays, gamingDay, hourStart } from "@/lib/time";
 
@@ -104,7 +105,7 @@ async function answerWindow(db: Db, userId: string, unix: number, gameId: number
   if (!going) return "Понял, без тебя";
 
   // Сессия на окно — как «Начать сессию» в приложении, по часам компании (как и напоминание).
-  const tz = process.env.CREW_TIMEZONE || "Europe/Moscow";
+  const tz = crewTimezone();
   const day = gamingDay(start, tz);
   const [members, entries, { data: game }] = await Promise.all([
     loadMembers(db),
