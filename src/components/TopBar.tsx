@@ -1,9 +1,11 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { Avatar } from "./Avatar";
 import { Wordmark } from "./Wordmark";
 import type { Member } from "@/lib/types";
 
-export function TopBar({ me, back }: { me: Member; back?: boolean }) {
+// extra — что-то маленькое слева от аватарки (на главной — кто в голосовом).
+export function TopBar({ me, back, extra }: { me: Member; back?: boolean; extra?: ReactNode }) {
   return (
     <header className="relative z-10 mx-auto flex w-full max-w-6xl items-center justify-between px-4 pt-[max(calc(1rem+var(--tg-safe-area-inset-top,0px)+var(--tg-content-safe-area-inset-top,0px)),env(safe-area-inset-top))] pb-4 sm:px-8 sm:pt-[calc(1.5rem+var(--tg-safe-area-inset-top,0px)+var(--tg-content-safe-area-inset-top,0px))]">
       {back ? (
@@ -22,6 +24,7 @@ export function TopBar({ me, back }: { me: Member; back?: boolean }) {
         </Link>
       )}
       <div className="flex items-center gap-2.5">
+        {extra}
         <Link href="/profile" aria-label="Профиль" className="rounded-full transition hover:scale-105">
           <Avatar id={me.id} name={me.name} url={me.avatar_url} size={34} />
         </Link>

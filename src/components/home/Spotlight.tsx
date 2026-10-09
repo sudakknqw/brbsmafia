@@ -13,6 +13,7 @@ import { NamesHint } from "@/components/NamesHint";
 import type { Member } from "@/lib/types";
 import type { EditorSeed, GatheringView, Spotlight as SpotlightModel } from "@/lib/views";
 import { GatheringInfo, StartGathering } from "@/components/Gathering";
+import { VoiceNow } from "./VoiceNow";
 
 type Props = {
   me: Member;
@@ -51,7 +52,7 @@ export function Spotlight({ me, spotlight, gathering, today }: Props) {
       <div className="absolute inset-0 -z-10 bg-linear-to-r from-ink/70 to-transparent sm:to-60%" />
       <AmbientTail edge="bottom" />
 
-      <TopBar me={me} />
+      <TopBar me={me} extra={<VoiceNow />} />
 
       <div className="mx-auto mt-auto w-full max-w-6xl px-4 pb-10 sm:px-8 sm:pb-14">
         <div className="anim-rise mb-6" style={{ animationDelay: "0.2s" }}>
