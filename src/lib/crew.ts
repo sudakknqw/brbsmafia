@@ -59,10 +59,30 @@ export async function loadGames(supabase: Supabase): Promise<Game[]> {
 
 /** Игры с наигранным временем всей компании. Если миграции 006 ещё нет — просто без него. */
 export async function withPlaytime(supabase: Supabase, games: Game[]): Promise<Game[]> {
-  const { data, error } = await supabase.from("steam_playtime").select("steam_appid, recent_minutes, total_minutes");
-  if (error || !data?.length) return games;
+  const appids = [...new Set(games.flatMap((g) => (g.steam_appid ? [g.steam_appid] : [])))];
+  if (!appids.length) return games;
+
+  // PostgREST отдаёт не больше 1000 строк за раз, а библиотеки Steam целиком — это тысячи строк.
+  // Берём только игры из нашей библиотеки, без нулевого времени, и листаем страницами.
+  const PAGE = 1000;
+  const rows: { steam_appid: number; recent_minutes: number; total_minutes: number }[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .from("steam_playtime")
+      .select("steam_appid, recent_minutes, total_minutes")
+      .in("steam_appid", appids)
+      .gt("total_minutes", 0)
+      .order("user_id")
+      .order("steam_appid")
+      .range(from, from + PAGE - 1);
+    if (error) return games;
+    rows.push(...(data ?? []));
+    if (!data || data.length < PAGE) break;
+  }
+  if (!rows.length) return games;
+
   const sum = new Map<number, { recent: number; total: number }>();
-  for (const r of data) {
+  for (const r of rows) {
     const s = sum.get(r.steam_appid) ?? { recent: 0, total: 0 };
     s.recent += r.recent_minutes;
     s.total += r.total_minutes;
