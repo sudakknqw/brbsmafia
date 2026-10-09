@@ -40,8 +40,8 @@ export function GamesPopover({ open, range, hourLabels, choices, picked, maxGame
         className={`${pop.closing ? "anim-popover-out pointer-events-none" : "anim-popover"} w-full rounded-[20px] border border-line bg-[#1a1a1f] p-4 shadow-[0_24px_60px_rgba(0,0,0,0.55)] sm:ml-[var(--ml)] sm:w-[360px]`}
         style={{ ["--ml" as string]: `clamp(0px, calc(${pct((popRange[0] + popRange[1]) / 2)} - 180px), calc(100% - 360px))` }}
       >
-        <div className="mb-3 flex items-baseline justify-between gap-3">
-          <span className="text-[15px] font-semibold tabular-nums">
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+          <span className="whitespace-nowrap text-[15px] font-semibold tabular-nums">
             {hourLabels[popRange[0]]} – {hourLabels[popRange[1]]}
             <span className="ml-2 font-normal text-dim">{duration(popRange)}</span>
           </span>
@@ -80,20 +80,20 @@ export function GamesPopover({ open, range, hourLabels, choices, picked, maxGame
           maxLength={80}
           enterKeyHint="done"
           aria-label="Заметка к дню"
-          placeholder="Заметка: после 23 без микрофона"
+          placeholder="Заметка, например «без микро»"
           className="mt-3 w-full rounded-xl bg-glass px-3 py-2 text-[16px] outline-none transition placeholder:text-faint focus:bg-glass2 sm:text-[14px]"
         />
-        <div className="mt-3 flex gap-2">
+        <div className="mt-3 flex flex-wrap gap-2 sm:flex-nowrap">
           <button
             onClick={() => onDone(popRange)}
-            className="flex-1 rounded-full bg-fg py-2.5 text-[15px] font-semibold text-ink transition active:scale-[0.98]"
+            className="basis-full rounded-full bg-fg sm:basis-auto sm:flex-1 py-2.5 text-[15px] font-semibold text-ink transition active:scale-[0.98]"
           >
             Готово
           </button>
-          <button onClick={() => onRepick(popRange)} className="rounded-full bg-glass px-4 py-2.5 text-[15px] transition hover:bg-glass2">
+          <button onClick={() => onRepick(popRange)} className="flex-1 whitespace-nowrap rounded-full bg-glass px-4 py-2.5 sm:flex-none text-[15px] transition hover:bg-glass2">
             Другое время
           </button>
-          <button onClick={onRemove} className="rounded-full bg-glass px-4 py-2.5 text-[15px] text-dim transition hover:bg-glass2">
+          <button onClick={onRemove} className="flex-1 whitespace-nowrap rounded-full bg-glass px-4 py-2.5 sm:flex-none text-[15px] text-dim transition hover:bg-glass2">
             Убрать
           </button>
         </div>
