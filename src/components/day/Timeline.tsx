@@ -1,26 +1,20 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
-import { clearDay, saveDay, setBusy } from "@/app/actions";
-import { Avatar } from "@/components/Avatar";
-import { Cover } from "@/components/GameArt";
+import { useEffect, useRef, useState } from "react";
 import { GameSearch } from "@/components/GameSearch";
-import { Sheet } from "@/components/Sheet";
-import { TimeDial } from "./TimeDial";
-import { memberColor } from "@/lib/colors";
-import { bestWindow } from "@/lib/overlap";
-import { DAY_HOURS } from "@/lib/time";
-import { usePresence } from "@/lib/usePresence";
-import { wheelToX } from "@/lib/wheel";
-import type { Game, Member } from "@/lib/types";
-import { plural, who } from "@/lib/words";
-import { busyPhrase, noMatchPhrase } from "@/lib/phrases";
 import { NamesHint } from "@/components/NamesHint";
-import { FriendTime } from "@/components/FriendTime";
-import { haptic } from "@/lib/tg";
-
-type Row = { member: Member; hours: number[]; state: "free" | "busy" | "silent"; note: string | null };
-type Range = [number, number];
+import { Sheet } from "@/components/Sheet";
+import { bestWindow } from "@/lib/overlap";
+import { noMatchPhrase } from "@/lib/phrases";
+import { DAY_HOURS } from "@/lib/time";
+import type { Game } from "@/lib/types";
+import { who } from "@/lib/words";
+import { FriendRows } from "./FriendRows";
+import { GamesPopover } from "./GamesPopover";
+import { MyRow } from "./MyRow";
+import { TimeDial } from "./TimeDial";
+import { duration, pct, shortHour, type Row } from "./timeScale";
+import { useMyTime } from "./useMyTime";
 
 type Props = {
   day: string;
@@ -36,76 +30,17 @@ type Props = {
   viewerTz: string;
 };
 
-const pct = (i: number) => `${(i / DAY_HOURS) * 100}%`;
-// На телефоне шкала узкая (час — около 10 px), поэтому время там выбирается на циферблате.
-const isPhone = () => window.matchMedia("(max-width: 639px)").matches;
-
-function runs(hours: number[]): Range[] {
-  const out: Range[] = [];
-  for (const h of [...hours].sort((a, b) => a - b)) {
-    const last = out[out.length - 1];
-    if (last && last[1] === h) last[1] = h + 1;
-    else out.push([h, h + 1]);
-  }
-  return out;
-}
-
-function duration([a, b]: Range) {
-  const n = b - a;
-  return `${n} ${plural(n, "час", "часа", "часов")}`;
-}
-
-/** Красный кружок «NO»: не смогу в этот день. */
-function NoButton({ active, onClick }: { active: boolean; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      aria-pressed={active}
-      aria-label={active ? "Всё-таки смогу" : "Не смогу в этот день"}
-      title={active ? "Всё-таки смогу" : "Не смогу"}
-      className={`flex size-7 shrink-0 items-center justify-center rounded-full text-[9px] font-extrabold tracking-wide transition active:scale-90 ${
-        active ? "bg-bad text-white" : "text-faint ring-1 ring-white/20 hover:bg-bad/20 hover:text-bad hover:ring-bad/60"
-      }`}
-    >
-      NO
-    </button>
-  );
-}
-
-/** Один промежуток на день: если в базе их несколько, берём от первого до последнего часа. */
-function toRange(hours: number[]): Range | null {
-  if (!hours.length) return null;
-  return [Math.min(...hours), Math.max(...hours) + 1];
-}
-
 /**
  * Шкала дня. В своей строке время отмечается прямо здесь: нажал начало,
  * нажал конец — появляется окно с выбором игр. Общее окно пересчитывается сразу.
  */
-// «08:00» → «8»; у часовых поясов со сдвигом в полчаса оставляем как есть.
-const shortHour = (label: string) => (label.endsWith(":00") ? String(Number(label.slice(0, -3))) : label);
-
 export function Timeline({ day, hourLabels, rows, meId, initialGames, games, recent, maxGames, invite, viewerTz }: Props) {
   const mine = rows.find((r) => r.member.id === meId)!;
   const others = rows.filter((r) => r.member.id !== meId);
 
-  const [range, setRange] = useState<Range | null>(toRange(mine.hours));
-  const [busy, setBusyState] = useState(mine.state === "busy");
-  const [anchor, setAnchor] = useState<number | null>(null);
-  const [hover, setHover] = useState<number | null>(null);
-  const [dial, setDial] = useState(false);
-  const [dialValue, setDialValue] = useState<Range>([12, 16]);
-  const [picked, setPicked] = useState<number[]>(initialGames);
-  const [popover, setPopover] = useState(false);
-  // Окно с играми закрывается плавно; пока уходит — держим его последний отрезок
-  // (при «Убрать время» сам отрезок обнуляется сразу).
-  const pop = usePresence(popover && !!range, 180);
-  const [lastRange, setLastRange] = useState(range);
-  if (range && lastRange !== range) setLastRange(range);
-  const popRange = range ?? lastRange;
+  const t = useMyTime({ day, mine, others, initialGames, maxGames });
+  const { range, busy, anchor, preview } = t;
   const [searching, setSearching] = useState(false);
-  const [grown, setGrown] = useState(0); // перезапуск анимации полосы
-  const [, start] = useTransition();
   const myRow = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -124,84 +59,8 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
       ]
     : [];
 
-  // Сбой сети не должен ронять шкалу: время останется на экране, а данные подтянутся при обновлении.
-  const run = (fn: () => Promise<void>) =>
-    start(async () => {
-      try {
-        await fn();
-      } catch (e) {
-        console.error(e);
-      }
-    });
-
-  const save = (r: Range, g: number[]) => run(() => saveDay(day, Array.from({ length: r[1] - r[0] }, (_, i) => r[0] + i), g));
-
-  // Сколько остальных свободно в каждый час — для подсветки на циферблате.
-  const othersCounts = new Array<number>(DAY_HOURS).fill(0);
-  others.forEach((r) => r.hours.forEach((h) => othersCounts[h]++));
-
-  /** Телефон: циферблат. Начинаем с моего времени, иначе — с общего окна остальных, иначе — от места касания. */
-  const openDial = (near?: number) => {
-    const theirs = bestWindow(othersCounts);
-    const start = near ?? 12;
-    setDialValue(range ?? (theirs ? [theirs.from, theirs.to] : [start, Math.min(DAY_HOURS, start + 3)]));
-    setAnchor(null);
-    setPopover(false);
-    setDial(true);
-    haptic("select");
-  };
-
-  const confirmDial = () => {
-    const r = dialValue;
-    haptic("success");
-    setRange(r);
-    setBusyState(false);
-    setDial(false);
-    setPopover(true);
-    setGrown((n) => n + 1);
-    save(r, picked);
-  };
-
-  const pick = (h: number) => {
-    if (anchor === null && isPhone()) return openDial(h);
-    haptic(anchor === null ? "select" : "success");
-    if (anchor === null) {
-      setAnchor(h);
-      setHover(h);
-      return;
-    }
-    const r: Range = [Math.min(anchor, h), Math.max(anchor, h) + 1];
-    setRange(r);
-    setBusyState(false);
-    setAnchor(null);
-    setHover(null);
-    setPopover(true);
-    setGrown((n) => n + 1);
-    save(r, picked); // время сохраняется сразу, игры — по «Готово»
-  };
-
-  const remove = () => {
-    setRange(null);
-    setPopover(false);
-    run(() => clearDay(day));
-  };
-
-  const markBusy = (value: boolean) => {
-    setBusyState(value);
-    setAnchor(null);
-    if (value) {
-      setRange(null);
-      setPopover(false);
-    }
-    run(() => (value ? setBusy(day) : clearDay(day)));
-  };
-
-  const togglePick = (id: number) =>
-    setPicked((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : prev.length >= maxGames ? prev : [...prev, id]));
-
   // Сначала недавно выбранные тобой, дальше — в твоём порядке из библиотеки.
   const choices = [...recent, ...games.filter((g) => !recent.some((r) => r.id === g.id))];
-  const preview: Range | null = anchor !== null ? [Math.min(anchor, hover ?? anchor), Math.max(anchor, hover ?? anchor) + 1] : null;
 
   const hint = range
     ? "Нажми на свою полосу, чтобы поменять игры или убрать время"
@@ -212,7 +71,6 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
         : "Нажми в своей строке, с какого часа ты свободен";
   // На телефоне время выбирается на циферблате — подсказка другая.
   const phoneHint = !range && anchor === null && !busy ? "Нажми на свою строку, чтобы отметить время" : null;
-
 
   return (
     <section className="rounded-[24px] bg-glass p-4 sm:p-6">
@@ -251,99 +109,23 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
           ))}
         </div>
 
-        {/* Своя строка: одна сплошная подсветка на обе колонки, без стыка посередине */}
-        <div className="pointer-events-none absolute -inset-x-2 top-7 h-14 rounded-2xl bg-white/[0.06]" aria-hidden="true" />
-        <div ref={myRow} id="my-row" className="relative flex h-14 items-center gap-2 pr-1">
-          <Avatar id={mine.member.id} name={mine.member.name} url={mine.member.avatar_url} size={26} />
-          <span className="min-w-0 flex-1 truncate text-[14px] font-semibold">Ты</span>
-          <NoButton active={busy} onClick={() => markBusy(!busy)} />
-        </div>
-        <div className="relative h-14">
-          <div className={`relative h-full transition-opacity ${busy && !range && anchor === null ? "opacity-40" : ""}`}>
-            <div className="absolute inset-x-0 top-1/2 h-4 -translate-y-1/2 rounded-full bg-white/10" />
-            {range && (
-              <button
-                key={grown}
-                onClick={() => setPopover((v) => !v)}
-                aria-label={`Моё время ${hourLabels[range[0]]} – ${hourLabels[range[1]]}. Изменить`}
-                className="anim-grow absolute top-1/2 h-4 -translate-y-1/2 rounded-full bg-fg transition hover:h-5"
-                style={{ left: pct(range[0]), width: pct(range[1] - range[0]) }}
-              />
-            )}
-            {preview && (
-              <>
-                <div
-                  className="pointer-events-none absolute top-1/2 h-4 -translate-y-1/2 rounded-full bg-white/35 transition-all duration-100"
-                  style={{ left: pct(preview[0]), width: pct(preview[1] - preview[0]) }}
-                />
-                <div
-                  className="pointer-events-none absolute top-1/2 h-5 -translate-y-1/2 animate-pulse rounded-full bg-fg"
-                  style={{ left: pct(anchor!), width: pct(1) }}
-                />
-              </>
-            )}
-            {!range && (
-              <div className="absolute inset-0 grid grid-cols-24" onPointerLeave={() => anchor !== null && setHover(anchor)}>
-                {hourLabels.slice(0, -1).map((label, h) => (
-                  <button
-                    key={h}
-                    onClick={() => pick(h)}
-                    onPointerEnter={() => anchor !== null && setHover(h)}
-                    aria-label={anchor === null ? `Свободен с ${label}` : `До ${hourLabels[h + 1]}`}
-                    className="h-full rounded-md transition-colors hover:bg-white/10"
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+        <MyRow
+          rowRef={myRow}
+          member={mine.member}
+          hourLabels={hourLabels}
+          range={range}
+          busy={busy}
+          anchor={anchor}
+          preview={preview}
+          grown={t.grown}
+          onBusy={t.markBusy}
+          onBar={t.togglePopover}
+          onPick={t.pick}
+          onHover={t.hoverHour}
+        />
 
         {/* Остальные */}
-        <div className="mt-1">
-          {others.map(({ member, state }) => (
-            <div key={member.id} className="flex h-12 items-center gap-2 pr-1">
-              <FriendTime name={member.name} timezone={member.timezone} viewerTz={viewerTz} className="flex-1">
-                <span className={`flex min-w-0 items-center gap-2 ${state === "free" ? "" : "opacity-45"}`}>
-                  <Avatar id={member.id} name={member.name} url={member.avatar_url} size={26} />
-                  <span className="truncate text-[14px] font-medium">{member.name}</span>
-                </span>
-              </FriendTime>
-              {state === "busy" && (
-                <span title={busyPhrase(member.id, day)} className="flex size-7 shrink-0 items-center justify-center rounded-full bg-bad text-[9px] font-extrabold tracking-wide text-white">
-                  NO
-                </span>
-              )}
-            </div>
-          ))}
-        </div>
-        <div className="relative mt-1">
-          <div className="pointer-events-none absolute inset-0 flex" aria-hidden="true">
-            {Array.from({ length: DAY_HOURS / 4 }, (_, i) => (
-              <div key={i} className="flex-1 border-l border-line first:border-l-0" />
-            ))}
-          </div>
-          {others.map(({ member, hours, state, note }, row) => (
-            <div key={member.id} className="flex h-12 items-center">
-              <div className="relative h-4 w-full">
-                {state === "free" &&
-                  runs(hours).map(([a, b]) => (
-                    <div
-                      key={a}
-                      className="anim-grow absolute inset-y-0 rounded-full"
-                      style={{
-                        left: pct(a),
-                        width: pct(b - a),
-                        background: memberColor(member.id),
-                        animationDelay: `calc(var(--base, 0s) + ${0.1 + row * 0.05}s)`,
-                      }}
-                      title={`${hourLabels[a]} – ${hourLabels[b]}`}
-                    />
-                  ))}
-                {state !== "free" && note && <span className="absolute inset-y-0 left-0 flex items-center text-[13px] text-faint italic">{note}</span>}
-              </div>
-            </div>
-          ))}
-        </div>
+        <FriendRows day={day} rows={others} hourLabels={hourLabels} viewerTz={viewerTz} />
 
         {/* Общее окно поверх всех строк */}
         {best && (
@@ -356,79 +138,26 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
         )}
 
         {/* Окно выбора игр под моей полосой */}
-        {pop.mounted && popRange && (
-          // Плавает поверх строк друзей, прямо под моей полосой.
-          <div className="absolute inset-x-0 top-[92px] z-20 sm:left-[170px]">
-            <div
-              className={`${pop.closing ? "anim-popover-out pointer-events-none" : "anim-popover"} w-full rounded-[20px] border border-line bg-[#1a1a1f] p-4 shadow-[0_24px_60px_rgba(0,0,0,0.55)] sm:ml-[var(--ml)] sm:w-[360px]`}
-              style={{ ["--ml" as string]: `clamp(0px, calc(${pct((popRange[0] + popRange[1]) / 2)} - 180px), calc(100% - 360px))` }}
-            >
-              <div className="mb-3 flex items-baseline justify-between gap-3">
-                <span className="text-[15px] font-semibold tabular-nums">
-                  {hourLabels[popRange[0]]} – {hourLabels[popRange[1]]}
-                  <span className="ml-2 font-normal text-dim">{duration(popRange)}</span>
-                </span>
-                <span className="text-[13px] text-dim">во что хочешь, до {maxGames === 5 ? "пяти" : maxGames}</span>
-              </div>
-              <div ref={wheelToX} className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 py-1.5">
-                {choices.map((g) => {
-                  const on = picked.includes(g.id);
-                  return (
-                    <button
-                      key={g.id}
-                      onClick={() => togglePick(g.id)}
-                      aria-pressed={on}
-                      aria-label={g.name}
-                      className={`tile w-[58px] shrink-0 rounded-[10px] ${on ? "tile-on" : "opacity-55"}`}
-                    >
-                      <Cover key={g.id} game={g} />
-                    </button>
-                  );
-                })}
-                <button
-                  onClick={() => setSearching(true)}
-                  aria-label="Найти игру"
-                  className="tile flex aspect-[2/3] w-[58px] shrink-0 items-center justify-center rounded-[10px] bg-glass text-xl text-dim"
-                >
-                  +
-                </button>
-              </div>
-              <div className="mt-3 flex gap-2">
-                <button
-                  onClick={() => {
-                    setPopover(false);
-                    save(popRange, picked);
-                  }}
-                  className="flex-1 rounded-full bg-fg py-2.5 text-[15px] font-semibold text-ink transition active:scale-[0.98]"
-                >
-                  Готово
-                </button>
-                <button
-                  onClick={() => {
-                    if (isPhone()) return openDial();
-                    setPopover(false);
-                    setAnchor(popRange[0]);
-                    setHover(popRange[1] - 1);
-                    setRange(null);
-                  }}
-                  className="rounded-full bg-glass px-4 py-2.5 text-[15px] transition hover:bg-glass2"
-                >
-                  Другое время
-                </button>
-                <button onClick={remove} className="rounded-full bg-glass px-4 py-2.5 text-[15px] text-dim transition hover:bg-glass2">
-                  Убрать
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        <GamesPopover
+          open={t.popover}
+          range={range}
+          hourLabels={hourLabels}
+          choices={choices}
+          picked={t.picked}
+          maxGames={maxGames}
+          onToggle={t.togglePick}
+          onSearch={() => setSearching(true)}
+          onDone={t.done}
+          onRepick={t.repick}
+          onRemove={t.remove}
+        />
       </div>
 
-      <Sheet open={dial} onClose={() => setDial(false)} title="Когда свободен">
+      <Sheet open={t.dial} onClose={t.closeDial} title="Когда свободен">
         <p className="-mt-3 mb-3 text-[14px] text-dim">Тяни точки по кругу. Светлые деления внутри — когда свободны остальные.</p>
-        <TimeDial value={dialValue} onChange={setDialValue} hourLabels={hourLabels} others={othersCounts} />
+        <TimeDial value={t.dialValue} onChange={t.setDialValue} hourLabels={hourLabels} others={t.othersCounts} />
         <button
-          onClick={confirmDial}
+          onClick={t.confirmDial}
           className="mt-5 w-full rounded-full bg-fg py-3.5 text-[16px] font-semibold text-ink transition active:scale-[0.98]"
         >
           Дальше: игры
@@ -436,8 +165,8 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
         {range && (
           <button
             onClick={() => {
-              setDial(false);
-              remove();
+              t.closeDial();
+              t.remove();
             }}
             className="mt-2 w-full rounded-full py-3 text-[15px] text-dim transition hover:text-fg"
           >
@@ -449,7 +178,7 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
       <Sheet open={searching} onClose={() => setSearching(false)} title="Найти игру">
         <GameSearch
           onPick={(id) => {
-            togglePick(id);
+            t.togglePick(id);
             setSearching(false);
           }}
         />
