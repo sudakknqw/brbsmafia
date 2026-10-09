@@ -43,9 +43,10 @@ export async function loadMembers(supabase: Supabase): Promise<Member[]> {
 }
 
 export async function loadEntries(supabase: Supabase, from: string, to: string): Promise<DayEntry[]> {
+  // «*», а не список колонок: так работает и до, и после миграции с заметками.
   const { data } = await supabase
     .from("day_entries")
-    .select("user_id, day, status, slots, game_ids")
+    .select("*")
     .gte("day", from)
     .lte("day", to);
   return (data ?? []) as DayEntry[];

@@ -41,6 +41,8 @@ export type DayEntry = {
   status: "free" | "busy";
   slots: Slot[];
   game_ids: number[];
+  /** Короткая заметка к дню, до 80 символов (010_day_notes.sql); до миграции поля нет. */
+  note?: string | null;
 };
 
 export type Want = {

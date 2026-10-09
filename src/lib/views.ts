@@ -208,7 +208,9 @@ export function buildDay(data: CrewData, day: string) {
       const hours = freeHours.get(m.id) ?? [];
       const state: keyof typeof order = hours.length ? "free" : entry?.status === "busy" ? "busy" : "silent";
       const note = state === "silent" ? silentPhrase(m.id, day) : state === "busy" ? personalPhrase(m.id) : null;
-      return { member: m, hours, state, note };
+      // Своя заметка человека к дню («после 23 без микрофона») — только рядом с отмеченным временем.
+      const comment = state === "free" ? entry?.note?.trim() || null : null;
+      return { member: m, hours, state, note, comment };
     })
     .sort((a, b) => order[a.state] - order[b.state]);
 

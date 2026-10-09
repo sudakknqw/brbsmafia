@@ -176,6 +176,24 @@ export async function quickFill(kind: "today" | "tomorrow" | "weekend") {
   changed();
 }
 
+/**
+ * Короткая заметка к своему дню: «после 23 без микрофона». Пустая — убрать.
+ * Только к уже отмеченному дню: без времени заметке не к чему относиться.
+ */
+export async function setDayNote(day: string, note: string) {
+  if (!isDay(day) || typeof note !== "string") return;
+  const { supabase, userId } = await member();
+  // Пробелы и переносы — в один пробел; 80 символов, не разрывая эмодзи и прочие пары.
+  const clean = [...note.replace(/\s+/g, " ").trim()].slice(0, 80).join("").trim();
+  const { error } = await supabase
+    .from("day_entries")
+    .update({ note: clean || null })
+    .eq("user_id", userId)
+    .eq("day", day);
+  if (error) return; // миграции 010 ещё нет
+  changed();
+}
+
 // ——— Игры ———
 
 export async function toggleWant(gameId: number) {
