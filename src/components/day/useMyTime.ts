@@ -1,15 +1,15 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { clearDay, saveDay, setBusy } from "@/app/actions";
+import { clearDay, saveDay, setBusy, setDayNote } from "@/app/actions";
 import { bestWindow } from "@/lib/overlap";
 import { DAY_HOURS } from "@/lib/time";
 import { haptic } from "@/lib/tg";
-import { isPhone, toRange, type Range, type Row } from "./timeScale";
+import { cleanNote, isPhone, toRange, type Range, type Row } from "./timeScale";
 
 /**
  * Своё время на шкале дня: выбор начала и конца (на компьютере — двумя нажатиями,
- * на телефоне — на циферблате), «NO», выбранные игры и сохранение.
+ * на телефоне — на циферблате), «NO», выбранные игры, заметка и сохранение.
  * Всё меняется на экране сразу, а сохраняется в фоне.
  */
 export function useMyTime({
@@ -34,6 +34,9 @@ export function useMyTime({
   const [picked, setPicked] = useState<number[]>(initialGames);
   const [popover, setPopover] = useState(false);
   const [grown, setGrown] = useState(0); // перезапуск анимации полосы
+  // Заметка: что набрано в окне игр и что уже сохранено (её и видно на шкале).
+  const [note, setNote] = useState(mine.comment ?? "");
+  const [savedNote, setSavedNote] = useState(mine.comment ?? "");
   const [, start] = useTransition();
 
   // Сбой сети не должен ронять шкалу: время останется на экране, а данные подтянутся при обновлении.
@@ -46,7 +49,14 @@ export function useMyTime({
       }
     });
 
-  const save = (r: Range, g: number[]) => run(() => saveDay(day, Array.from({ length: r[1] - r[0] }, (_, i) => r[0] + i), g));
+  const hoursOf = (r: Range) => Array.from({ length: r[1] - r[0] }, (_, i) => r[0] + i);
+  const save = (r: Range, g: number[]) => run(() => saveDay(day, hoursOf(r), g));
+
+  /** Без времени заметки нет: строка дня удаляется или становится «NO». */
+  const dropNote = () => {
+    setNote("");
+    setSavedNote("");
+  };
 
   // Сколько остальных свободно в каждый час — для подсветки на циферблате.
   const othersCounts = new Array<number>(DAY_HOURS).fill(0);
@@ -95,6 +105,7 @@ export function useMyTime({
   const remove = () => {
     setRange(null);
     setPopover(false);
+    dropNote();
     run(() => clearDay(day));
   };
 
@@ -105,16 +116,30 @@ export function useMyTime({
       setRange(null);
       setPopover(false);
     }
-    run(() => (value ? setBusy(day) : clearDay(day)));
+    // При «NO» строка дня остаётся — заметку к времени стираем, чтобы она не всплыла потом.
+    const hadNote = !!savedNote;
+    dropNote();
+    run(async () => {
+      if (!value) return clearDay(day);
+      await setBusy(day);
+      if (hadNote) await setDayNote(day, "");
+    });
   };
 
   const togglePick = (id: number) =>
     setPicked((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : prev.length >= maxGames ? prev : [...prev, id]));
 
-  /** «Готово» в окне игр: закрыть и сохранить выбранные игры. */
+  /** «Готово» в окне игр: закрыть и сохранить выбранные игры и заметку (после времени — строка дня уже есть). */
   const done = (r: Range) => {
     setPopover(false);
-    save(r, picked);
+    const text = cleanNote(note);
+    const noteChanged = text !== savedNote;
+    setNote(text);
+    setSavedNote(text);
+    run(async () => {
+      await saveDay(day, hoursOf(r), picked);
+      if (noteChanged) await setDayNote(day, text);
+    });
   };
 
   /** «Другое время»: на телефоне — снова циферблат, на компьютере — выбор заново с прежним началом. */
@@ -137,6 +162,9 @@ export function useMyTime({
     anchor,
     preview,
     picked,
+    note,
+    savedNote,
+    setNote,
     popover,
     grown,
     dial,

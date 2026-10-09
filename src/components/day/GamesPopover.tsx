@@ -14,6 +14,8 @@ type Props = {
   choices: Game[];
   picked: number[];
   maxGames: number;
+  note: string;
+  onNote: (text: string) => void;
   onToggle: (id: number) => void;
   onSearch: () => void;
   onDone: (r: Range) => void;
@@ -22,7 +24,7 @@ type Props = {
 };
 
 /** Окно выбора игр под моей полосой: плавает поверх строк друзей. */
-export function GamesPopover({ open, range, hourLabels, choices, picked, maxGames, onToggle, onSearch, onDone, onRepick, onRemove }: Props) {
+export function GamesPopover({ open, range, hourLabels, choices, picked, maxGames, note, onNote, onToggle, onSearch, onDone, onRepick, onRemove }: Props) {
   // Окно с играми закрывается плавно; пока уходит — держим его последний отрезок
   // (при «Убрать время» сам отрезок обнуляется сразу).
   const pop = usePresence(open && !!range, 180);
@@ -68,6 +70,19 @@ export function GamesPopover({ open, range, hourLabels, choices, picked, maxGame
             +
           </button>
         </div>
+        {/* Заметка к дню: сохраняется вместе с играми по «Готово» */}
+        <input
+          value={note}
+          onChange={(e) => onNote(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.nativeEvent.isComposing) onDone(popRange);
+          }}
+          maxLength={80}
+          enterKeyHint="done"
+          aria-label="Заметка к дню"
+          placeholder="Заметка: после 23 без микрофона"
+          className="mt-3 w-full rounded-xl bg-glass px-3 py-2 text-[16px] outline-none transition placeholder:text-faint focus:bg-glass2 sm:text-[14px]"
+        />
         <div className="mt-3 flex gap-2">
           <button
             onClick={() => onDone(popRange)}

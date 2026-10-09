@@ -3,7 +3,8 @@ import { FriendTime } from "@/components/FriendTime";
 import { memberColor } from "@/lib/colors";
 import { busyPhrase } from "@/lib/phrases";
 import { DAY_HOURS } from "@/lib/time";
-import { pct, runs, type Row } from "./timeScale";
+import { DayNote } from "./DayNote";
+import { pct, runs, toRange, type Row } from "./timeScale";
 
 /** Строки остальных — две ячейки сетки шкалы: имена и полосы. */
 export function FriendRows({ day, rows, hourLabels, viewerTz }: { day: string; rows: Row[]; hourLabels: string[]; viewerTz: string }) {
@@ -32,7 +33,7 @@ export function FriendRows({ day, rows, hourLabels, viewerTz }: { day: string; r
             <div key={i} className="flex-1 border-l border-line first:border-l-0" />
           ))}
         </div>
-        {rows.map(({ member, hours, state, note }, row) => (
+        {rows.map(({ member, hours, state, note, comment }, row) => (
           <div key={member.id} className="flex h-12 items-center">
             <div className="relative h-4 w-full">
               {state === "free" &&
@@ -49,6 +50,7 @@ export function FriendRows({ day, rows, hourLabels, viewerTz }: { day: string; r
                     title={`${hourLabels[a]} – ${hourLabels[b]}`}
                   />
                 ))}
+              {state === "free" && comment && <DayNote text={comment} range={toRange(hours)!} className="top-full mt-0.5" />}
               {state !== "free" && note && <span className="absolute inset-y-0 left-0 flex items-center text-[13px] text-faint italic">{note}</span>}
             </div>
           </div>

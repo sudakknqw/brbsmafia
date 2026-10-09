@@ -118,6 +118,7 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
           anchor={anchor}
           preview={preview}
           grown={t.grown}
+          note={t.savedNote}
           onBusy={t.markBusy}
           onBar={t.togglePopover}
           onPick={t.pick}
@@ -145,6 +146,8 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
           choices={choices}
           picked={t.picked}
           maxGames={maxGames}
+          note={t.note}
+          onNote={t.setNote}
           onToggle={t.togglePick}
           onSearch={() => setSearching(true)}
           onDone={t.done}

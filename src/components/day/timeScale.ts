@@ -3,7 +3,15 @@ import { DAY_HOURS } from "@/lib/time";
 import type { Member } from "@/lib/types";
 import { plural } from "@/lib/words";
 
-export type Row = { member: Member; hours: number[]; state: "free" | "busy" | "silent"; note: string | null };
+export type Row = {
+  member: Member;
+  hours: number[];
+  state: "free" | "busy" | "silent";
+  /** Фраза за молчащего или занятого (не своя). */
+  note: string | null;
+  /** Своя заметка человека к дню. */
+  comment: string | null;
+};
 export type Range = [number, number];
 
 export const pct = (i: number) => `${(i / DAY_HOURS) * 100}%`;
@@ -30,6 +38,9 @@ export function toRange(hours: number[]): Range | null {
   if (!hours.length) return null;
   return [Math.min(...hours), Math.max(...hours) + 1];
 }
+
+/** Заметка к дню, как её сохраняет сервер: пробелы в один, по краям — без. */
+export const cleanNote = (text: string) => text.replace(/\s+/g, " ").trim();
 
 // «08:00» → «8»; у часовых поясов со сдвигом в полчаса оставляем как есть.
 export const shortHour = (label: string) => (label.endsWith(":00") ? String(Number(label.slice(0, -3))) : label);

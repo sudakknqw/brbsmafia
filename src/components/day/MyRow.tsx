@@ -3,6 +3,7 @@
 import type { Ref } from "react";
 import { Avatar } from "@/components/Avatar";
 import type { Member } from "@/lib/types";
+import { DayNote } from "./DayNote";
 import { pct, type Range } from "./timeScale";
 
 /** Красный кружок «NO»: не смогу в этот день. */
@@ -32,6 +33,8 @@ type Props = {
   preview: Range | null;
   /** Ключ полосы: меняется — анимация появления проигрывается заново. */
   grown: number;
+  /** Сохранённая заметка к дню — под полосой. */
+  note: string;
   onBusy: (value: boolean) => void;
   onBar: () => void;
   onPick: (h: number) => void;
@@ -42,7 +45,7 @@ type Props = {
  * Своя строка — две ячейки сетки шкалы: имя с «NO» и полоса.
  * Пока времени нет, полоса разбита на часы: нажал начало, нажал конец.
  */
-export function MyRow({ rowRef, member, hourLabels, range, busy, anchor, preview, grown, onBusy, onBar, onPick, onHover }: Props) {
+export function MyRow({ rowRef, member, hourLabels, range, busy, anchor, preview, grown, note, onBusy, onBar, onPick, onHover }: Props) {
   return (
     <>
       {/* Своя строка: одна сплошная подсветка на обе колонки, без стыка посередине */}
@@ -64,6 +67,7 @@ export function MyRow({ rowRef, member, hourLabels, range, busy, anchor, preview
               style={{ left: pct(range[0]), width: pct(range[1] - range[0]) }}
             />
           )}
+          {range && note && <DayNote text={note} range={range} className="top-[38px]" />}
           {preview && (
             <>
               <div

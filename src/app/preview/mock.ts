@@ -48,8 +48,8 @@ export function mockCrew(variant: "full" | "empty" = "full"): CrewData {
   const range = (a: number, b: number) => Array.from({ length: b - a }, (_, i) => a + i);
   const entries: DayEntry[] = [
     free("u-kirill", today, range(11, 16), [1, 5]),
-    free("u-lesha", today, range(12, 18), [1]),
-    free("u-masha", today, range(13, 16), [2, 1]),
+    { ...free("u-lesha", today, range(12, 18), [1]), note: "после 23 без микрофона" },
+    { ...free("u-masha", today, range(13, 16), [2, 1]), note: "могу опоздать на полчаса" },
     free("u-dima", today, range(10, 15), [3, 1]),
     free("u-sasha", today, range(13, 17), [5]),
     { user_id: "u-anya", day: today, status: "busy", slots: [], game_ids: [] },
