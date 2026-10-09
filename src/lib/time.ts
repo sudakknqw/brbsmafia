@@ -39,9 +39,14 @@ export function calendarDay(date: Date, tz: string): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(date);
 }
 
-/** Игровой день, в который попадает момент. */
+/**
+ * Игровой день, в который попадает момент. Считаем по часам на стене в этом поясе:
+ * раньше 08:00 по местному — ещё предыдущий день. (Вычитать 8 реальных часов нельзя:
+ * в сутки перевода времени это ошибается на час.)
+ */
 export function gamingDay(date: Date, tz: string): string {
-  return calendarDay(new Date(date.getTime() - DAY_START_HOUR * HOUR), tz);
+  const wall = date.getTime() + offsetMinutes(date, tz) * 60000;
+  return new Date(wall - DAY_START_HOUR * HOUR).toISOString().slice(0, 10);
 }
 
 export function addDays(day: string, n: number): string {
@@ -115,10 +120,10 @@ export function hoursToSlots(day: string, hours: number[], tz: string): Slot[] {
   sorted.forEach((h, i) => {
     if (runStart < 0) runStart = h;
     if (sorted[i + 1] !== h + 1) {
-      slots.push({
-        start: hourStart(day, runStart, tz).toISOString(),
-        end: hourStart(day, h + 1, tz).toISOString(),
-      });
+      const start = hourStart(day, runStart, tz);
+      const end = hourStart(day, h + 1, tz);
+      // В ночь перевода на летнее время часа 02:00 нет — пустой отрезок не сохраняем.
+      if (end > start) slots.push({ start: start.toISOString(), end: end.toISOString() });
       runStart = -1;
     }
   });
