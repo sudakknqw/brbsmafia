@@ -24,7 +24,8 @@ export async function syncDiscord() {
 
   const [{ data: memberRows }, { data: entryRows }, { data: gameRows }, { data: state }] = await Promise.all([
     db.from("members").select("joined_at, profiles!members_user_id_fkey(id, name, avatar_url, timezone)").order("joined_at"),
-    db.from("day_entries").select("user_id, day, status, slots, game_ids").gte("day", addDays(day, -1)).lte("day", addDays(day, 1)),
+    // «*»: заметки к дню (010_day_notes.sql) — если миграцию уже запустили.
+    db.from("day_entries").select("*").gte("day", addDays(day, -1)).lte("day", addDays(day, 1)),
     db.from("games").select("id, steam_appid, name"),
     db.from("app_state").select("value").eq("key", "discord_message").maybeSingle(),
   ]);
@@ -43,7 +44,8 @@ export async function syncDiscord() {
       .map(([a, b]) => `${ts(hourStart(day, a, tz))}–${ts(hourStart(day, b, tz))}`)
       .join(", ");
     const wants = (entry?.game_ids ?? []).map((id) => games.get(id)).filter(Boolean);
-    return `● **${m.name}** — ${ranges}${wants.length ? ` · ${wants.join(", ")}` : ""}`;
+    const note = entry?.note?.trim();
+    return `● **${m.name}** — ${ranges}${wants.length ? ` · ${wants.join(", ")}` : ""}${note ? ` · ${escapeMarkdown(note)}` : ""}`;
   });
 
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? "";
@@ -86,6 +88,9 @@ export async function syncDiscord() {
   const message = (await res.json()) as { id: string };
   await db.from("app_state").upsert({ key: "discord_message", value: { day, id: message.id } });
 }
+
+/** Заметку пишут люди: звёздочки и подчёркивания не должны ломать разметку сообщения. */
+const escapeMarkdown = (text: string) => text.replace(/[\\*_~`|>]/g, "\\$&");
 
 function toRanges(hours: number[]): [number, number][] {
   const out: [number, number][] = [];
