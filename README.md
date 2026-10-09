@@ -87,7 +87,7 @@ src/
   app/            страницы, Server Actions и API (tg/auth, tg/remind, tg/webhook, cron, steam)
   components/     главная, день и шкала, сессии, заставка, Telegram-обвязка
   lib/            время и часовые пояса, поиск общего окна, Steam, Telegram, Discord, фразы
-supabase/         миграции по порядку: schema.sql → 002 … 008
+supabase/         миграции по порядку: schema.sql → 002 … 009
 ```
 
 <details>

@@ -3,10 +3,9 @@
 
 create extension if not exists pgcrypto;
 
--- Профиль создаётся автоматически при первом входе через Discord.
+-- Профиль создаётся автоматически при первом входе через Telegram.
 create table public.profiles (
   id uuid primary key references auth.users on delete cascade,
-  discord_id text,
   name text not null default 'Без имени',
   avatar_url text,
   timezone text not null default 'Europe/Moscow',
@@ -14,18 +13,11 @@ create table public.profiles (
   created_at timestamptz not null default now()
 );
 
--- Участники компании. Пишет сюда только сервер (по приглашению).
+-- Участники компании. Пишет сюда только сервер (при входе участника группы в Telegram).
 create table public.members (
   user_id uuid primary key references public.profiles on delete cascade,
   invited_by uuid references public.profiles on delete set null,
   joined_at timestamptz not null default now()
-);
-
-create table public.invites (
-  code text primary key default encode(gen_random_bytes(6), 'hex'),
-  created_by uuid references public.profiles on delete cascade,
-  created_at timestamptz not null default now(),
-  expires_at timestamptz not null default now() + interval '7 days'
 );
 
 create table public.games (
@@ -72,21 +64,23 @@ create table public.app_state (
   value jsonb
 );
 
--- Профиль из данных Discord при первом входе.
+-- Профиль при первом входе: ник и фото, которые сервер передал из Telegram (api/tg/auth).
+-- Фото берём только из Telegram — то же правило, что у проверки аватарки (008_hardening.sql).
 create function public.handle_new_user() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
-  insert into public.profiles (id, discord_id, name, avatar_url)
+  insert into public.profiles (id, name, avatar_url)
   values (
     new.id,
-    new.raw_user_meta_data ->> 'provider_id',
     coalesce(
-      new.raw_user_meta_data -> 'custom_claims' ->> 'global_name',
       new.raw_user_meta_data ->> 'full_name',
       new.raw_user_meta_data ->> 'name',
       'Без имени'
     ),
-    new.raw_user_meta_data ->> 'avatar_url'
+    case
+      when new.raw_user_meta_data ->> 'avatar_url' like 'https://t.me/i/userpic/%'
+        then new.raw_user_meta_data ->> 'avatar_url'
+    end
   );
   return new;
 end $$;
@@ -103,7 +97,6 @@ $$;
 -- Доступ: всё видят и меняют только участники, своё — только своё.
 alter table public.profiles enable row level security;
 alter table public.members enable row level security;
-alter table public.invites enable row level security;
 alter table public.games enable row level security;
 alter table public.wants enable row level security;
 alter table public.recent_games enable row level security;
@@ -117,11 +110,6 @@ create policy "own profile update" on public.profiles
 
 create policy "members read members" on public.members
   for select using (public.is_member());
-
-create policy "members read invites" on public.invites
-  for select using (public.is_member());
-create policy "members create invites" on public.invites
-  for insert with check (public.is_member() and created_by = auth.uid());
 
 create policy "members read games" on public.games
   for select using (public.is_member());
@@ -159,7 +147,3 @@ create policy "avatar upload" on storage.objects
   for insert with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
 create policy "avatar update" on storage.objects
   for update using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
-
--- Первое приглашение, для тебя. Код увидишь после запуска.
-insert into public.invites (expires_at) values (now() + interval '30 days')
-returning code;
