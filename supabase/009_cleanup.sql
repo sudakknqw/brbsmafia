@@ -2,9 +2,8 @@
 -- Запускать один раз в Supabase → SQL Editor → New query → Run (повторный запуск безопасен).
 --
 -- Что делает: убирает приглашения (вход теперь только для участников группы в Telegram),
--- профиль при первом входе заполняется без Discord, колонка discord_id удаляется.
--- Внимание: вместе с discord_id пропадут упоминания @ник в Discord-сообщении о сборе
--- у старых профилей; сама сводка и сообщения через вебхук продолжают работать.
+-- профиль при первом входе заполняется без Discord.
+-- Колонку discord_id оставляем: по ней бот упоминает людей (@ник) в Discord-сообщении о сессии.
 
 drop table if exists public.invites cascade;
 
@@ -28,5 +27,3 @@ begin
   );
   return new;
 end $$;
-
-alter table public.profiles drop column if exists discord_id;

@@ -6,6 +6,7 @@ create extension if not exists pgcrypto;
 -- Профиль создаётся автоматически при первом входе через Telegram.
 create table public.profiles (
   id uuid primary key references auth.users on delete cascade,
+  discord_id text, -- для упоминаний @ник в Discord-сообщении о сессии (необязательно)
   name text not null default 'Без имени',
   avatar_url text,
   timezone text not null default 'Europe/Moscow',

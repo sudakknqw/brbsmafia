@@ -128,7 +128,7 @@ export async function syncGatheringMessage(gatheringId: number, mentionIds: stri
 
   const ids = [...new Set([g.created_by, ...g.members.map((m) => m.user_id), ...mentionIds].filter(Boolean))] as string[];
   const [{ data: profiles }, { data: game }] = await Promise.all([
-    // «*», а не список колонок: discord_id удаляет 009_cleanup.sql, без неё просто не будет упоминаний.
+    // «*», а не список колонок: discord_id есть не у всех баз (старые установки), без неё просто не будет упоминаний.
     db.from("profiles").select("*").in("id", ids),
     g.game_id ? db.from("games").select("*").eq("id", g.game_id).maybeSingle<Game>() : Promise.resolve({ data: null }),
   ]);
