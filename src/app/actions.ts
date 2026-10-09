@@ -7,7 +7,7 @@ import { getViewer, loadEntries, loadGames, loadMembers, withPlaytime, MAX_DAY_G
 import { deleteGatheringMessage, syncDiscord, syncGatheringMessage } from "@/lib/discord";
 import { dayStats } from "@/lib/overlap";
 import { addSharedGames, dismissSteamGame, resolveSteamId, steamConfigured, syncSteamPlaytime } from "@/lib/steamApi";
-import { addDays, gamingDay, hourStart, hoursToSlots, isValidTimezone, slotsToHours, weekdayIndex } from "@/lib/time";
+import { addDays, DAY_HOURS, gamingDay, hourStart, hoursToSlots, isValidTimezone, slotsToHours, weekdayIndex } from "@/lib/time";
 import { personalOrder, type DayEntry } from "@/lib/types";
 
 async function member() {
@@ -21,7 +21,29 @@ function changed() {
   after(() => syncDiscord().catch((e) => console.error(e)));
 }
 
-const isDay = (day: string) => /^\d{4}-\d{2}-\d{2}$/.test(day);
+// Действия может вызвать любой участник с произвольным JSON: типы TypeScript тут ничего не гарантируют.
+const isDay = (day: string) => typeof day === "string" && /^\d{4}-\d{2}-\d{2}$/.test(day);
+const isId = (id: unknown): id is number => Number.isSafeInteger(id) && (id as number) > 0;
+
+/** Часы игрового дня: только целые 0..23, без повторов, по порядку. */
+const cleanHours = (hours: unknown): number[] =>
+  Array.isArray(hours)
+    ? [...new Set(hours.filter((h): h is number => Number.isInteger(h) && h >= 0 && h < DAY_HOURS))].sort((a, b) => a - b)
+    : [];
+
+/**
+ * Аватарка — только своя картинка из нашего хранилища, фото из Telegram или та, что уже стоит
+ * (у старых аккаунтов может быть, например, ссылка Discord — её не ломаем).
+ */
+function avatarAllowed(url: unknown, current: string | null | undefined, userId: string) {
+  if (url === null) return true;
+  if (typeof url !== "string") return false;
+  if (url === current) return true;
+  return (
+    url.startsWith(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${userId}/`) ||
+    url.startsWith("https://t.me/i/userpic/")
+  );
+}
 
 async function touchRecent(supabase: Awaited<ReturnType<typeof member>>["supabase"], userId: string, gameIds: number[]) {
   if (!gameIds.length) return;
@@ -63,19 +85,20 @@ export async function saveLibraryOrder(ids: number[]) {
 export async function saveDay(day: string, hours: number[], gameIds: number[]) {
   if (!isDay(day)) return;
   const { supabase, userId, tz } = await member();
-  const games = [...new Set(gameIds)].slice(0, MAX_DAY_GAMES);
+  const free = cleanHours(hours);
+  const games = Array.isArray(gameIds) ? [...new Set(gameIds.filter(isId))].slice(0, MAX_DAY_GAMES) : [];
   // Поднимаем только впервые выбранные на этот день: пересохранение тех же игр не считается.
   const { data: before } = await supabase.from("day_entries").select("game_ids").eq("user_id", userId).eq("day", day).maybeSingle();
   const added = games.filter((id) => !(before?.game_ids ?? []).includes(id));
 
-  if (!hours.length) {
+  if (!free.length) {
     await supabase.from("day_entries").delete().eq("user_id", userId).eq("day", day);
   } else {
     await supabase.from("day_entries").upsert({
       user_id: userId,
       day,
       status: "free",
-      slots: hoursToSlots(day, hours, tz),
+      slots: hoursToSlots(day, free, tz),
       game_ids: games,
       updated_at: new Date().toISOString(),
     });
@@ -153,6 +176,7 @@ export async function quickFill(kind: "today" | "tomorrow" | "weekend") {
 // ——— Игры ———
 
 export async function toggleWant(gameId: number) {
+  if (!isId(gameId)) return;
   const { supabase, userId } = await member();
   const since = Date.now() - WANT_TTL_HOURS * 3600_000;
 
@@ -177,6 +201,8 @@ export async function toggleWant(gameId: number) {
 }
 
 export async function addGame(input: { steamAppId?: number; name: string }): Promise<number | null> {
+  if (typeof input?.name !== "string") return null;
+  if (input.steamAppId != null && !isId(input.steamAppId)) return null;
   const { supabase, userId } = await member();
   const name = input.name.trim().slice(0, 80);
   if (!name) return null;
@@ -213,10 +239,11 @@ const artRoot = () => `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object
  * Прошлая своя картинка этой игры удаляется из хранилища — чтобы не копились.
  */
 export async function setGameArt(gameId: number, field: ArtField, url: string | null) {
+  if (!isId(gameId)) return;
   const { supabase } = await member();
   if (!ART_FIELDS.includes(field)) return;
   const folder = `${artRoot()}${gameId}/`;
-  if (url !== null && !url.startsWith(folder)) return;
+  if (url !== null && (typeof url !== "string" || !url.startsWith(folder))) return;
 
   const { data: before } = await supabase.from("games").select(field).eq("id", gameId).maybeSingle<Record<ArtField, string | null>>();
   const { error } = await supabase.from("games").update({ [field]: url }).eq("id", gameId);
@@ -233,6 +260,7 @@ export async function setGameArt(gameId: number, field: ArtField, url: string | 
 
 /** Убрать игру у всех — вместе с её папкой своих картинок. */
 export async function deleteGame(gameId: number) {
+  if (!isId(gameId)) return;
   const { supabase } = await member();
   const { data: game } = await supabase.from("games").select("steam_appid").eq("id", gameId).maybeSingle();
   const { error } = await supabase.from("games").delete().eq("id", gameId);
@@ -253,6 +281,7 @@ export async function deleteGame(gameId: number) {
  */
 export async function startGathering(day: string, gameId: number): Promise<{ error: string | null }> {
   if (!isDay(day)) return { error: "Неверный день" };
+  if (!isId(gameId)) return { error: "Такой игры нет в библиотеке" };
   const { supabase, userId, tz } = await member();
 
 
@@ -302,6 +331,7 @@ export async function startGathering(day: string, gameId: number): Promise<{ err
 
 /** «В деле», «Не пойду» или снять отметку (null). */
 export async function setGatheringStatus(gatheringId: number, status: "in" | "out" | null) {
+  if (!isId(gatheringId) || (status !== "in" && status !== "out" && status !== null)) return;
   const { supabase, userId } = await member();
   if (status) {
     await supabase
@@ -316,6 +346,7 @@ export async function setGatheringStatus(gatheringId: number, status: "in" | "ou
 
 /** Отменить может только тот, кто собирал. */
 export async function cancelGathering(gatheringId: number) {
+  if (!isId(gatheringId)) return;
   const { supabase, userId } = await member();
   const { data } = await supabase
     .from("gatherings")
@@ -334,10 +365,15 @@ export async function cancelGathering(gatheringId: number) {
 export async function updateProfile(input: { name: string; avatarUrl?: string | null }) {
   const viewer = await getViewer();
   if (!viewer.user || !viewer.isMember) throw new Error("Нет доступа");
-  const name = input.name.trim().slice(0, 32);
+  const name = typeof input?.name === "string" ? input.name.trim().slice(0, 32) : "";
   if (!name) return { error: "Введи ник" };
   const patch: Record<string, unknown> = { name, onboarded: true };
-  if (input.avatarUrl !== undefined) patch.avatar_url = input.avatarUrl;
+  if (input.avatarUrl !== undefined) {
+    if (!avatarAllowed(input.avatarUrl, viewer.profile?.avatar_url, viewer.user.id)) {
+      return { error: "Эта картинка не подходит для аватарки" };
+    }
+    patch.avatar_url = input.avatarUrl;
+  }
   await viewer.supabase.from("profiles").update(patch).eq("id", viewer.user.id);
   changed();
   return { error: null };
