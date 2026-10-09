@@ -4,7 +4,7 @@ import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { crewTimezone } from "@/lib/crewTime";
-import { getViewer, loadEntries, loadGames, loadMembers, withPlaytime, MAX_DAY_GAMES, MAX_WANTS, WANT_TTL_HOURS } from "@/lib/crew";
+import { getViewer, loadEntries, loadGames, loadLibraryOrder, loadMembers, withPlaytime, MAX_DAY_GAMES, MAX_WANTS, WANT_TTL_HOURS } from "@/lib/crew";
 import { deleteGatheringMessage, syncDiscord, syncGatheringMessage } from "@/lib/discord";
 import { dayStats } from "@/lib/overlap";
 import { addSharedGames, dismissSteamGame, resolveSteamId, steamConfigured, syncSteamPlaytime } from "@/lib/steamApi";
@@ -60,24 +60,26 @@ async function touchRecent(supabase: Awaited<ReturnType<typeof member>>["supabas
  */
 async function bumpGames(supabase: Awaited<ReturnType<typeof member>>["supabase"], userId: string, gameIds: number[]) {
   if (!gameIds.length) return;
-  const [{ data: profile, error }, games] = await Promise.all([
-    supabase.from("profiles").select("library_order").eq("id", userId).maybeSingle(),
+  const [saved, games] = await Promise.all([
+    loadLibraryOrder(supabase, userId),
     loadGames(supabase).then((g) => withPlaytime(supabase, g)),
   ]);
-  if (error || !profile) return; // миграции 007 ещё нет
-  const ids = personalOrder(games, profile.library_order ?? []).map((g) => g.id);
+  if (!saved) return; // миграции 008 ещё нет — не затираем порядок наугад
+  const ids = personalOrder(games, saved).map((g) => g.id);
   for (const id of gameIds) {
     const i = ids.indexOf(id);
     if (i > 0) [ids[i - 1], ids[i]] = [ids[i], ids[i - 1]];
   }
-  await supabase.from("profiles").update({ library_order: ids }).eq("id", userId);
+  // Ошибку записи (например, миграции 008 ещё нет) молча пропускаем.
+  await supabase.from("library_order").upsert({ user_id: userId, game_ids: ids, updated_at: new Date().toISOString() });
 }
 
 /** Свой порядок библиотеки после перетаскивания. */
 export async function saveLibraryOrder(ids: number[]) {
   const { supabase, userId } = await member();
   const clean = [...new Set(ids.map(Number).filter((n) => Number.isInteger(n) && n > 0))].slice(0, 1000);
-  await supabase.from("profiles").update({ library_order: clean }).eq("id", userId);
+  // Ошибку записи (например, миграции 008 ещё нет) молча пропускаем: порядок просто не сохранится.
+  await supabase.from("library_order").upsert({ user_id: userId, game_ids: clean, updated_at: new Date().toISOString() });
   revalidatePath("/", "layout");
 }
 

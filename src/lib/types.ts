@@ -5,8 +5,6 @@ export type Member = {
   name: string;
   avatar_url: string | null;
   timezone: string;
-  /** Свой порядок игр в библиотеке (007_library_order.sql); есть только у своего профиля. */
-  library_order?: number[];
 };
 
 export type Game = {

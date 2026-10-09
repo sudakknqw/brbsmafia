@@ -113,6 +113,16 @@ export async function loadRecentGameIds(supabase: Supabase, userId: string): Pro
   return (data ?? []).map((r) => r.game_id as number);
 }
 
+/**
+ * Свой порядок игр в библиотеке (008_hardening.sql). null — прочитать не вышло
+ * (например, миграцию ещё не запускали): тогда порядок как у всех.
+ */
+export async function loadLibraryOrder(supabase: Supabase, userId: string): Promise<number[] | null> {
+  const { data, error } = await supabase.from("library_order").select("game_ids").eq("user_id", userId).maybeSingle();
+  if (error) return null;
+  return ((data?.game_ids ?? []) as (number | string)[]).map(Number);
+}
+
 /** Всё, что нужно экранам, одним заходом: для недели вперёд и дня назад. */
 export async function loadCrewData(viewer: Awaited<ReturnType<typeof requireMember>>, from?: string, to?: string): Promise<CrewData> {
   const { supabase, profile: me } = viewer;
@@ -120,16 +130,17 @@ export async function loadCrewData(viewer: Awaited<ReturnType<typeof requireMemb
   const today = gamingDay(now, me.timezone);
   const rangeFrom = from ?? addDays(weekStart(today), -1);
   const rangeTo = to ?? addDays(weekStart(today), 7);
-  const [members, entries, allGames, wants, recentIds, gatherings] = await Promise.all([
+  const [members, entries, allGames, wants, recentIds, gatherings, order] = await Promise.all([
     loadMembers(supabase),
     loadEntries(supabase, rangeFrom, rangeTo),
     loadGames(supabase).then((games) => withPlaytime(supabase, games)),
     loadActiveWants(supabase),
     loadRecentGameIds(supabase, me.id),
     loadGatherings(supabase, rangeFrom, rangeTo),
+    loadLibraryOrder(supabase, me.id),
   ]);
   // Игры приходят уже в твоём порядке — так их и показывают библиотека и выбор игр на день.
-  const games = personalOrder(allGames, me.library_order);
+  const games = personalOrder(allGames, order ?? []);
   const recent = recentIds.map((id) => games.find((g) => g.id === id)).filter((g): g is Game => !!g);
   const fallbackGameId = games.length ? games[Math.floor(Math.random() * games.length)].id : null;
   return { me, members, entries, games, wants, recent, gatherings, fallbackGameId, now, today };
