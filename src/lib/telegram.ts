@@ -44,15 +44,30 @@ export function verifyInitData(initData: string, maxAgeSeconds = 24 * 3600): Tel
   }
 }
 
-/** Состоит ли человек в нашей группе (TELEGRAM_GROUP_ID). Бот должен быть в группе. */
-export async function isGroupMember(userId: number): Promise<boolean> {
+/**
+ * Состоит ли человек в нашей группе (TELEGRAM_GROUP_ID). Бот должен быть в группе.
+ * «unknown» — ответа нет или он не про человека (сеть, лимиты, бот не настроен):
+ * по такому результату никого нельзя выгонять.
+ */
+export async function groupMemberStatus(userId: number): Promise<"member" | "gone" | "unknown"> {
   const chatId = process.env.TELEGRAM_GROUP_ID;
-  if (!chatId) return false;
-  const res = await fetch(`${API()}/getChatMember?chat_id=${encodeURIComponent(chatId)}&user_id=${userId}`, { cache: "no-store" });
-  if (!res.ok) return false;
-  const { result } = (await res.json()) as { result?: { status: string; is_member?: boolean } };
-  if (!result) return false;
-  return ["creator", "administrator", "member"].includes(result.status) || (result.status === "restricted" && !!result.is_member);
+  if (!chatId) return "unknown";
+  try {
+    const res = await fetch(`${API()}/getChatMember?chat_id=${encodeURIComponent(chatId)}&user_id=${userId}`, { cache: "no-store" });
+    if (!res.ok) return "unknown";
+    const { ok, result } = (await res.json()) as { ok?: boolean; result?: { status: string; is_member?: boolean } };
+    if (!ok || !result) return "unknown";
+    if (["creator", "administrator", "member"].includes(result.status)) return "member";
+    if (result.status === "restricted") return result.is_member ? "member" : "gone";
+    if (result.status === "left" || result.status === "kicked") return "gone";
+    return "unknown";
+  } catch {
+    return "unknown";
+  }
+}
+
+export async function isGroupMember(userId: number): Promise<boolean> {
+  return (await groupMemberStatus(userId)) === "member";
 }
 
 /** Личное сообщение от бота. Молча не получается, если человек не разрешил боту писать. */
