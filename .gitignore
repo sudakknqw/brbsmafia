@@ -41,5 +41,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# готовые SQL с секретами — только локально
+# filled-in SQL with secrets stays local
 *.local.sql
+
+# local tooling
+.claude/
+AGENTS.md
+CLAUDE.md
