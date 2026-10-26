@@ -21,7 +21,7 @@ export function QuickFill() {
           disabled={pending}
           onClick={() => {
             setDone(o.kind);
-            start(() => quickFill(o.kind));
+            start(() => quickFill(o.kind).catch(() => undefined));
           }}
           className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition active:scale-95 ${
             done === o.kind ? "bg-fg text-ink" : "bg-glass hover:bg-glass2"

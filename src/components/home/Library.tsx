@@ -176,7 +176,7 @@ export function Library({
     if (!confirm(`Убрать «${game.name}» из библиотеки у всех?`)) return;
     setArtGameId(null);
     setHidden((h) => [...h, game.id]);
-    start(() => deleteGame(game.id));
+    start(() => deleteGame(game.id).catch(() => undefined));
   };
 
   return (

@@ -48,7 +48,7 @@ export function GameArtEditor({ game, onRemove }: { game: Game; onRemove?: () =>
       if (upErr) throw upErr;
       const url = supabase.storage.from("games").getPublicUrl(path).data.publicUrl;
       setLocal((l) => ({ ...l, [kind]: url }));
-      start(() => setGameArt(game.id, FIELD[kind], url));
+      start(() => setGameArt(game.id, FIELD[kind], url).catch(() => undefined));
     } catch {
       setError("Не получилось загрузить. Проверь, что миграция 003_game_art.sql запущена, и попробуй ещё раз.");
     } finally {
@@ -58,7 +58,7 @@ export function GameArtEditor({ game, onRemove }: { game: Game; onRemove?: () =>
 
   const reset = (kind: ArtKind) => {
     setLocal((l) => ({ ...l, [kind]: null }));
-    start(() => setGameArt(game.id, FIELD[kind], null));
+    start(() => setGameArt(game.id, FIELD[kind], null).catch(() => undefined));
   };
 
   return (

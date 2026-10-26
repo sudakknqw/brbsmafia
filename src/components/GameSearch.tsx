@@ -38,7 +38,7 @@ export function GameSearch({ onPick }: { onPick: (gameId: number, fromSteam: boo
 
   const pick = (input: { steamAppId?: number; name: string }) =>
     start(async () => {
-      const id = await addGame(input);
+      const id = await addGame(input).catch(() => null);
       if (id) onPick(id, !!input.steamAppId);
     });
 
