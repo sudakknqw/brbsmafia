@@ -1,12 +1,12 @@
--- brbs mafia: схема базы.
--- Запускать целиком в Supabase → SQL Editor → New query → Run.
+-- brbs mafia: database schema.
+-- Run as a whole in Supabase → SQL Editor → New query → Run.
 
 create extension if not exists pgcrypto;
 
--- Профиль создаётся автоматически при первом входе через Telegram.
+-- A profile is created automatically on the first Telegram login.
 create table public.profiles (
   id uuid primary key references auth.users on delete cascade,
-  discord_id text, -- для упоминаний @ник в Discord-сообщении о сессии (необязательно)
+  discord_id text, -- for @name mentions in the Discord session message (optional)
   name text not null default 'Без имени',
   avatar_url text,
   timezone text not null default 'Europe/Moscow',
@@ -14,7 +14,7 @@ create table public.profiles (
   created_at timestamptz not null default now()
 );
 
--- Участники компании. Пишет сюда только сервер (при входе участника группы в Telegram).
+-- Crew members. Only the server writes here (when a Telegram group member logs in).
 create table public.members (
   user_id uuid primary key references public.profiles on delete cascade,
   invited_by uuid references public.profiles on delete set null,
@@ -29,7 +29,7 @@ create table public.games (
   created_at timestamptz not null default now()
 );
 
--- Статус «хочу сейчас»: живёт 24 часа (фильтр по created_at).
+-- "Want now" status: lives 24 hours (filtered by created_at).
 create table public.wants (
   user_id uuid references public.profiles on delete cascade,
   game_id bigint references public.games on delete cascade,
@@ -37,7 +37,7 @@ create table public.wants (
   primary key (user_id, game_id)
 );
 
--- Быстрый доступ: игры, которые человек искал или выбирал.
+-- Quick access: games the person searched for or picked.
 create table public.recent_games (
   user_id uuid references public.profiles on delete cascade,
   game_id bigint references public.games on delete cascade,
@@ -45,9 +45,9 @@ create table public.recent_games (
   primary key (user_id, game_id)
 );
 
--- Один человек — одна запись на день (день по его местному времени).
--- status: 'free' — отметил время (slots), 'busy' — нажал «Не могу».
--- Нет записи — «молчит».
+-- One entry per person per day (the day in their local time).
+-- status: 'free' means time is marked (slots), 'busy' means they pressed NO.
+-- No entry means "silent".
 create table public.day_entries (
   user_id uuid references public.profiles on delete cascade,
   day date not null,
@@ -59,14 +59,14 @@ create table public.day_entries (
   check (cardinality(game_ids) <= 5)
 );
 
--- Служебное: id сегодняшнего сообщения в Discord.
+-- Internal: the id of today's Discord message.
 create table public.app_state (
   key text primary key,
   value jsonb
 );
 
--- Профиль при первом входе: ник и фото, которые сервер передал из Telegram (api/tg/auth).
--- Фото берём только из Telegram — то же правило, что у проверки аватарки (008_hardening.sql).
+-- Profile on first login: name and photo the server passed from Telegram (api/tg/auth).
+-- Photos only from Telegram: the same rule as the avatar check (008_hardening.sql).
 create function public.handle_new_user() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
@@ -95,7 +95,7 @@ language sql stable security definer set search_path = public as $$
   select exists (select 1 from public.members where user_id = auth.uid());
 $$;
 
--- Доступ: всё видят и меняют только участники, своё — только своё.
+-- Access: only members see and change things; your own data only you.
 alter table public.profiles enable row level security;
 alter table public.members enable row level security;
 alter table public.games enable row level security;
@@ -138,11 +138,11 @@ create policy "own days update" on public.day_entries
 create policy "own days delete" on public.day_entries
   for delete using (user_id = auth.uid());
 
--- Живые обновления на сайте.
+-- Live updates on the site.
 alter publication supabase_realtime add table
   public.profiles, public.games, public.wants, public.day_entries, public.members;
 
--- Аватарки.
+-- Avatars.
 insert into storage.buckets (id, name, public) values ('avatars', 'avatars', true);
 create policy "avatar upload" on storage.objects
   for insert with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);

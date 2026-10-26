@@ -14,8 +14,8 @@ import { CloseBar } from "./CloseBar";
 import { DayNav } from "./DayNav";
 
 /**
- * Экран дня. Отдельной страницей (/day/…) или внутри раскрывающейся панели
- * на главной — тогда вместо «Главная» кнопка закрытия (onClose).
+ * Day screen. Either as a standalone page (/day/…) or inside the expanding panel
+ * on the home page, where a close button (onClose) replaces "Home".
  */
 export function DayView({
   data,
@@ -102,7 +102,7 @@ export function DayView({
           viewerTz={data.me.timezone}
         />
 
-        {/* Игры этого дня */}
+        {/* Games for this day */}
         <section>
           <h2 className="mb-4 text-[22px] font-semibold tracking-tight">Игры на этот день</h2>
           {m.dayGames.length ? (

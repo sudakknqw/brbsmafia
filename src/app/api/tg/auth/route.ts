@@ -6,9 +6,9 @@ import { isGroupMember, verifyInitData } from "@/lib/telegram";
 const fail = (error: string, status: number) => NextResponse.json({ ok: false, error }, { status });
 
 /**
- * Вход из мини-приложения. Telegram подписал, кто открыл приложение;
- * пускаем только участников нашей группы и открываем сессию Supabase
- * (одноразовой ссылкой-входом, которую сервер сразу и подтверждает).
+ * Login from the Mini App. Telegram signs who opened the app;
+ * we only let in members of our group and open a Supabase session
+ * (via a one-time magic link that the server verifies right away).
  */
 export async function POST(request: NextRequest) {
   if (!process.env.TELEGRAM_BOT_TOKEN || !process.env.TELEGRAM_GROUP_ID) return fail("not-configured", 503);
@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
   const tg = verifyInitData(initData ?? "");
   if (!tg) return fail("bad-signature", 401);
 
-  // Только участники группы — и при первом входе, и при каждом следующем.
+  // Group members only, on the first login and on every later one.
   if (!(await isGroupMember(tg.id))) return fail("not-in-group", 403);
 
   const admin = createAdminClient();
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     const { data } = await admin.auth.admin.getUserById(userId);
     email = data.user?.email ?? undefined;
   } else {
-    // Первый вход: аккаунт на служебный адрес. Ник и фото — из Telegram, потом их можно поменять в профиле.
+    // First login: an account on a service email. Name and photo come from Telegram and can be changed in the profile.
     email = `tg${tg.id}@telegram.brbsmafia.app`;
     const name = [tg.first_name, tg.last_name].filter(Boolean).join(" ") || tg.username || "Без имени";
     const { data, error } = await admin.auth.admin.createUser({

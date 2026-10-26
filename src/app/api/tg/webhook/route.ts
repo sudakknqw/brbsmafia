@@ -20,10 +20,10 @@ type CallbackQuery = {
 const HOUR = 3600_000;
 
 /**
- * Нажатия кнопок под сообщениями бота:
- *  s:in|out:<id сессии>               — «Иду» / «Без меня» в напоминании о сессии;
- *  w:in|out:<unix начала>:<id игры>  — то же для общего окна без сессии (первое «Иду» её создаёт);
- *  n:no:<день>                        — «Сегодня NO» в вечернем пинке.
+ * Taps on buttons under bot messages:
+ *  s:in|out:<session id>             Going / Skip in a session reminder;
+ *  w:in|out:<start unix>:<game id>   the same for a common window without a session (the first "Going" creates one);
+ *  n:no:<day>                         "NO today" in the evening nudge.
  */
 export async function POST(request: NextRequest) {
   const secret = webhookSecret();
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
   if (kind === "n") reply = await markBusy(db, profile.id, rest[0]);
 
   await answerCallback(query.id, reply);
-  // Галочка на выбранной кнопке — чтобы было видно, что ответ принят.
+  // A check mark on the pressed button so it's clear the answer was accepted.
   const message = query.message;
   if (message?.reply_markup && kind !== "n") {
     const keyboard = message.reply_markup.inline_keyboard.map((row) =>
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     );
     await editKeyboard(message.chat.id, message.message_id, keyboard);
   } else if (message && kind === "n") {
-    // После «NO» кнопки больше не нужны, кроме «Отметить время» — вдруг передумает.
+    // After NO the buttons are no longer needed, except "Mark time" in case of a change of plans.
     const keep = (message.reply_markup?.inline_keyboard ?? []).flat().filter((b) => b.web_app);
     await editKeyboard(message.chat.id, message.message_id, keep.map((b) => [{ text: b.text, url: b.web_app!.url }]));
   }
@@ -86,7 +86,7 @@ async function answerSession(db: Db, userId: string, gatheringId: number, going:
   return going ? "Записал: идёшь" : "Понял, без тебя";
 }
 
-/** Общее окно: если сессию на это время уже начали — отвечаем в ней, иначе «Иду» её создаёт. */
+/** Common window: if a session for this time already exists, answer in it; otherwise "Going" creates one. */
 async function answerWindow(db: Db, userId: string, unix: number, gameId: number, going: boolean) {
   const start = new Date(unix * 1000);
   if (!Number.isFinite(unix) || Date.now() - start.getTime() > 3 * HOUR) return "Это время уже прошло";
@@ -104,7 +104,7 @@ async function answerWindow(db: Db, userId: string, unix: number, gameId: number
   }
   if (!going) return "Понял, без тебя";
 
-  // Сессия на окно — как «Начать сессию» в приложении, по часам компании (как и напоминание).
+  // A session for the window, like "Start session" in the app, using the crew time zone (same as the reminder).
   const tz = crewTimezone();
   const day = gamingDay(start, tz);
   const [members, entries, { data: game }] = await Promise.all([
@@ -129,7 +129,7 @@ async function answerWindow(db: Db, userId: string, unix: number, gameId: number
     .select("id")
     .single();
   if (error || !created) {
-    // На этот день сессия уже есть (другое окно) — присоединяем к ней.
+    // There is already a session this day (another window): join it instead.
     const { data: sameDay } = await db.from("gatherings").select("id").eq("day", day).maybeSingle();
     if (!sameDay) return "Не получилось, попробуй в приложении";
     await setStatus(db, sameDay.id, userId, true);

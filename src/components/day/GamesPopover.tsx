@@ -23,10 +23,10 @@ type Props = {
   onRemove: () => void;
 };
 
-/** Окно выбора игр под моей полосой: плавает поверх строк друзей. */
+/** Game picker under my bar: floats over the friends' rows. */
 export function GamesPopover({ open, range, hourLabels, choices, picked, maxGames, note, onNote, onToggle, onSearch, onDone, onRepick, onRemove }: Props) {
-  // Окно с играми закрывается плавно; пока уходит — держим его последний отрезок
-  // (при «Убрать время» сам отрезок обнуляется сразу).
+  // The game picker closes smoothly; while it leaves we keep its last range
+  // ("Remove time" clears the range itself immediately).
   const pop = usePresence(open && !!range, 180);
   const [lastRange, setLastRange] = useState(range);
   if (range && lastRange !== range) setLastRange(range);
@@ -34,7 +34,7 @@ export function GamesPopover({ open, range, hourLabels, choices, picked, maxGame
 
   if (!pop.mounted || !popRange) return null;
   return (
-    // Плавает поверх строк друзей, прямо под моей полосой.
+    // Floats over the friends' rows, right under my bar.
     <div className="absolute inset-x-0 top-[92px] z-20 sm:left-[170px]">
       <div
         className={`${pop.closing ? "anim-popover-out pointer-events-none" : "anim-popover"} w-full rounded-[20px] border border-line bg-[#1a1a1f] p-4 shadow-[0_24px_60px_rgba(0,0,0,0.55)] sm:ml-[var(--ml)] sm:w-[360px]`}
@@ -70,7 +70,7 @@ export function GamesPopover({ open, range, hourLabels, choices, picked, maxGame
             +
           </button>
         </div>
-        {/* Заметка к дню: сохраняется вместе с играми по «Готово» */}
+        {/* Day note: saved together with the games on "Done" */}
         <input
           value={note}
           onChange={(e) => onNote(e.target.value)}

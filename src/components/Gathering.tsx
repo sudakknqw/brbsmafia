@@ -9,7 +9,7 @@ import { who } from "@/lib/words";
 import { DECLINE, JOIN, pick } from "@/lib/phrases";
 import { haptic } from "@/lib/tg";
 
-/** Кнопка «Начать сессию»: одно нажатие — сессия на лучшее окно дня и сообщение в Discord. */
+/** "Start session" button: one tap books the day's best window and posts to Discord. */
 export function StartGathering({ day, gameId, gameName }: { day: string; gameId: number; gameName: string }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -35,13 +35,13 @@ export function StartGathering({ day, gameId, gameName }: { day: string; gameId:
   );
 }
 
-/** Идущая сессия: кто позвал, когда, кто в деле — и свои кнопки. */
+/** An active session: who started it, when, who's in, plus your own buttons. */
 export function GatheringInfo({ gathering, meId }: { gathering: GatheringView; meId: string }) {
   const [status, setStatus] = useState(gathering.myStatus);
   const [cancelled, setCancelled] = useState(false);
   const [, start] = useTransition();
 
-  // Своя отметка поверх серверных данных — кнопки отвечают сразу.
+  // Your own answer over the server data, so the buttons respond instantly.
   const me = [...gathering.going, ...gathering.notGoing].find((m) => m.id === meId) ?? null;
   const going = gathering.going.filter((m) => m.id !== meId);
   if (status === "in" && me) going.unshift(me);

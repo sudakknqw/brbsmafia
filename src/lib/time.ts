@@ -1,6 +1,6 @@
-// Всё время в базе — UTC. Здесь перевод в местное время конкретного человека.
-// «Игровой день» идёт с 08:00 до 08:00 следующего дня, чтобы ночные
-// посиделки не разрывались на два дня.
+// Everything in the database is UTC. This converts it to a specific person's local time.
+// A "gaming day" runs from 08:00 to 08:00 the next day, so late-night
+// sessions aren't split across two days.
 
 export const DAY_START_HOUR = 8;
 export const DAY_HOURS = 24;
@@ -8,7 +8,7 @@ const HOUR = 3600_000;
 
 export type Slot = { start: string; end: string };
 
-/** Смещение часового пояса от UTC в минутах на данный момент. */
+/** Time zone offset from UTC in minutes at the given moment. */
 export function offsetMinutes(date: Date, tz: string): number {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: tz,
@@ -25,7 +25,7 @@ export function offsetMinutes(date: Date, tz: string): number {
   return (asUtc - Math.floor(date.getTime() / 1000) * 1000) / 60000;
 }
 
-/** Местные дата + час (час может быть ≥ 24) → момент в UTC. */
+/** Local date + hour (the hour may be ≥ 24) → a UTC moment. */
 export function zonedToUtc(day: string, hour: number, tz: string): Date {
   const [y, m, d] = day.split("-").map(Number);
   const guess = Date.UTC(y, m - 1, d, hour);
@@ -34,15 +34,15 @@ export function zonedToUtc(day: string, hour: number, tz: string): Date {
   return new Date(guess - second * 60000);
 }
 
-/** Календарная дата YYYY-MM-DD в часовом поясе. */
+/** Calendar date YYYY-MM-DD in a time zone. */
 export function calendarDay(date: Date, tz: string): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(date);
 }
 
 /**
- * Игровой день, в который попадает момент. Считаем по часам на стене в этом поясе:
- * раньше 08:00 по местному — ещё предыдущий день. (Вычитать 8 реальных часов нельзя:
- * в сутки перевода времени это ошибается на час.)
+ * The gaming day a moment belongs to. Computed from wall-clock time in that zone:
+ * before 08:00 local time it's still the previous day. (Subtracting 8 real hours doesn't work:
+ * on DST change days it's off by an hour.)
  */
 export function gamingDay(date: Date, tz: string): string {
   const wall = date.getTime() + offsetMinutes(date, tz) * 60000;
@@ -61,7 +61,7 @@ export function dayWindow(day: string, tz: string) {
   };
 }
 
-/** Начало i-го часа игрового дня. */
+/** Start of the i-th hour of the gaming day. */
 export function hourStart(day: string, i: number, tz: string): Date {
   return zonedToUtc(day, DAY_START_HOUR + i, tz);
 }
@@ -102,17 +102,17 @@ export function dayNumber(day: string): number {
   return Number(day.slice(8, 10));
 }
 
-/** Номер дня недели: 0 — вс, 6 — сб. */
+/** Day of the week: 0 is Sunday, 6 is Saturday. */
 export function weekdayIndex(day: string): number {
   return utcDate(day).getUTCDay();
 }
 
-/** Понедельник недели, в которую попадает день. */
+/** Monday of the week the day belongs to. */
 export function weekStart(day: string): string {
   return addDays(day, -((weekdayIndex(day) + 6) % 7));
 }
 
-/** Набор часов игрового дня (индексы 0..23) → слоты UTC. */
+/** Set of gaming-day hours (indices 0..23) → UTC slots. */
 export function hoursToSlots(day: string, hours: number[], tz: string): Slot[] {
   const sorted = [...new Set(hours)].filter((h) => h >= 0 && h < DAY_HOURS).sort((a, b) => a - b);
   const slots: Slot[] = [];
@@ -122,7 +122,7 @@ export function hoursToSlots(day: string, hours: number[], tz: string): Slot[] {
     if (sorted[i + 1] !== h + 1) {
       const start = hourStart(day, runStart, tz);
       const end = hourStart(day, h + 1, tz);
-      // В ночь перевода на летнее время часа 02:00 нет — пустой отрезок не сохраняем.
+      // On the spring-forward night there is no 02:00 hour: don't save an empty range.
       if (end > start) slots.push({ start: start.toISOString(), end: end.toISOString() });
       runStart = -1;
     }
@@ -130,7 +130,7 @@ export function hoursToSlots(day: string, hours: number[], tz: string): Slot[] {
   return slots;
 }
 
-/** Слоты UTC → часы игрового дня, где человек свободен хотя бы полчаса. */
+/** UTC slots → gaming-day hours in which the person is free for at least half an hour. */
 export function slotsToHours(day: string, slots: Slot[], tz: string): number[] {
   const out: number[] = [];
   for (let i = 0; i < DAY_HOURS; i++) {

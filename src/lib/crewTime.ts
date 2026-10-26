@@ -1,8 +1,8 @@
 import "server-only";
 
 /**
- * Часовой пояс компании. По нему считается игровой день сессии (gatherings.day уникален),
- * сообщение в Discord и напоминания — чтобы у людей из разных поясов дата сессии совпадала.
+ * The crew time zone. It defines a session's gaming day (gatherings.day is unique),
+ * the Discord message and reminders, so people in different time zones agree on the session date.
  */
 export function crewTimezone(): string {
   return process.env.CREW_TIMEZONE || "Europe/Moscow";

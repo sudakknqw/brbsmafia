@@ -3,12 +3,12 @@
 import { useEffect, useState } from "react";
 
 /**
- * Плавный уход: после show = false элемент ещё `duration` мс остаётся на экране
- * с closing = true — чтобы успела проиграться анимация исчезновения.
+ * Smooth exit: after show = false the element stays on screen for `duration` ms
+ * with closing = true, so the exit animation has time to play.
  */
 export function usePresence(show: boolean, duration: number) {
   const [mounted, setMounted] = useState(show);
-  // Появление — сразу, в том же рендере (без лишнего кадра).
+  // Appearing is immediate, in the same render (no extra frame).
   if (show && !mounted) setMounted(true);
 
   useEffect(() => {

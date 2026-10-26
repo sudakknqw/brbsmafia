@@ -5,8 +5,8 @@ import { Sheet } from "@/components/Sheet";
 import { SteamLinkForm } from "./SteamLinkForm";
 
 /**
- * Пока у человека нет ссылки на Steam, при каждом входе просим её —
- * после заставки, чтобы окно не пряталось под ней.
+ * While someone has no Steam link, ask for it on every visit,
+ * after the splash screen so the dialog isn't hidden under it.
  */
 export function SteamPrompt() {
   const [open, setOpen] = useState(false);

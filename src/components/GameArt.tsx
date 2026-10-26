@@ -5,8 +5,8 @@ import { gameArt, plateColor } from "@/lib/steam";
 import type { Game } from "@/lib/types";
 
 /**
- * Перебирает картинки по очереди, пока какая-нибудь не загрузится.
- * Новый список (например, загрузили свою обложку) — начинаем сначала.
+ * Tries images one by one until one of them loads.
+ * A new list (e.g. a custom cover was uploaded) starts over.
  */
 function useFallback(sources: string[]) {
   const key = sources.join("|");
@@ -19,7 +19,7 @@ function useFallback(sources: string[]) {
   };
 }
 
-/** Вертикальная обложка, как в библиотеке Steam. */
+/** Portrait cover, like in the Steam library. */
 export function Cover({ game, className = "" }: { game: Game; className?: string }) {
   const art = gameArt(game);
   const { src, failed, index } = useFallback([...art.portrait, ...art.portraitFallback]);
@@ -54,7 +54,7 @@ export function Cover({ game, className = "" }: { game: Game; className?: string
   );
 }
 
-/** Широкий арт на фон. */
+/** Wide background art. */
 export function HeroArt({ game, className = "" }: { game: Game; className?: string }) {
   const art = gameArt(game);
   const { src, failed, index } = useFallback([...art.hero, ...art.heroFallback]);
@@ -73,7 +73,7 @@ export function HeroArt({ game, className = "" }: { game: Game; className?: stri
   );
 }
 
-/** Логотип игры; если его нет — название крупным шрифтом. */
+/** Game logo; if there is none, the name in large type. */
 export function Logo({ game, className = "" }: { game: Game; className?: string }) {
   const { src, failed } = useFallback(gameArt(game).logo);
 
@@ -87,8 +87,8 @@ export function Logo({ game, className = "" }: { game: Game; className?: string 
 }
 
 /**
- * Подкрашивает весь сайт под игру: берёт средний насыщенный цвет из арта.
- * Steam отдаёт картинки с CORS, поэтому их можно прочитать в canvas.
+ * Tints the whole site to match the game: samples the average saturated color of the art.
+ * Steam serves images with CORS, so they can be read in a canvas.
  */
 export function Ambient({ game }: { game: Game | null }) {
   const art = game ? gameArt(game) : null;
@@ -100,7 +100,7 @@ export function Ambient({ game }: { game: Game | null }) {
     const previous = root.style.getPropertyValue("--ambient");
     let alive = true;
     const set = (rgb: string) => alive && root.style.setProperty("--ambient", rgb);
-    // Когда экран закрывается (например, панель дня), возвращаем прежний цвет.
+    // When the screen closes (e.g. the day panel), restore the previous color.
     const restore = () => {
       alive = false;
       if (previous) root.style.setProperty("--ambient", previous);
@@ -124,13 +124,13 @@ export function Ambient({ game }: { game: Game | null }) {
         for (let i = 0; i < px.length; i += 4) {
           const max = Math.max(px[i], px[i + 1], px[i + 2]);
           const min = Math.min(px[i], px[i + 1], px[i + 2]);
-          const weight = (max - min) / 255 + 0.05; // насыщенные пиксели важнее серых
+          const weight = (max - min) / 255 + 0.05; // saturated pixels matter more than gray ones
           r += px[i] * weight;
           g += px[i + 1] * weight;
           b += px[i + 2] * weight;
           w += weight;
         }
-        // Приглушаем, чтобы фон оставался тёмным, а текст — читаемым.
+        // Toned down so the background stays dark and text stays readable.
         const k = 140 / Math.max(r / w, g / w, b / w, 1);
         set(`${Math.round((r / w) * Math.min(k, 1))} ${Math.round((g / w) * Math.min(k, 1))} ${Math.round((b / w) * Math.min(k, 1))}`);
       } catch {

@@ -1,7 +1,7 @@
 /**
- * Ref для горизонтального ряда: колёсико мыши (вверх-вниз) листает его вбок.
- * Когда ряд упёрся в край — прокрутка достаётся странице, как обычно.
- * Тачпад с горизонтальным жестом не трогаем: он и так листает вбок.
+ * Ref for a horizontal row: the mouse wheel (up/down) scrolls it sideways.
+ * When the row hits its edge, scrolling goes to the page as usual.
+ * Horizontal trackpad gestures are left alone: they already scroll sideways.
  */
 export function wheelToX(el: HTMLElement | null) {
   if (!el) return;

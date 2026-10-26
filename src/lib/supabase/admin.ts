@@ -1,7 +1,7 @@
 import "server-only";
 import { createClient } from "@supabase/supabase-js";
 
-// Полный доступ к базе в обход правил. Только на сервере.
+// Full database access bypassing RLS. Server only.
 export function createAdminClient() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

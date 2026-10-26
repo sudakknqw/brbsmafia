@@ -13,8 +13,8 @@ export type TelegramUser = {
 const API = () => `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`;
 
 /**
- * Проверяет данные, которые Telegram передаёт мини-приложению (initData):
- * подпись считается от токена бота, подделать её без токена нельзя.
+ * Verifies the data Telegram passes to the Mini App (initData):
+ * the signature is derived from the bot token and can't be forged without it.
  * https://core.telegram.org/bots/webapps#validating-data-received-via-the-mini-app
  */
 export function verifyInitData(initData: string, maxAgeSeconds = 24 * 3600): TelegramUser | null {
@@ -45,9 +45,9 @@ export function verifyInitData(initData: string, maxAgeSeconds = 24 * 3600): Tel
 }
 
 /**
- * Состоит ли человек в нашей группе (TELEGRAM_GROUP_ID). Бот должен быть в группе.
- * «unknown» — ответа нет или он не про человека (сеть, лимиты, бот не настроен):
- * по такому результату никого нельзя выгонять.
+ * Whether a person is in our group (TELEGRAM_GROUP_ID). The bot must be in the group.
+ * "unknown" means no answer or an answer that isn't about the person (network, rate limits, bot not configured):
+ * nobody may be removed based on such a result.
  */
 export async function groupMemberStatus(userId: number): Promise<"member" | "gone" | "unknown"> {
   const chatId = process.env.TELEGRAM_GROUP_ID;
@@ -70,8 +70,8 @@ export async function isGroupMember(userId: number): Promise<boolean> {
   return (await groupMemberStatus(userId)) === "member";
 }
 
-/** Личное сообщение от бота. Молча не получается, если человек не разрешил боту писать. */
-/** Кнопка под сообщением: открыть мини-приложение или ответить боту (callback). */
+/** A private message from the bot. Silently fails if the person hasn't allowed the bot to write. */
+/** Button under a message: open the Mini App or answer the bot (callback). */
 export type Button = { text: string; url: string } | { text: string; data: string };
 export type Keyboard = Button[][];
 
@@ -103,19 +103,19 @@ export async function sendMessage(chatId: number, text: string, keyboard?: Keybo
   });
 }
 
-/** Поменять кнопки у уже отправленного сообщения (отметить выбранную). */
+/** Changes the buttons of an already sent message (to mark the pressed one). */
 export async function editKeyboard(chatId: number, messageId: number, keyboard: Keyboard) {
   return call("editMessageReplyMarkup", { chat_id: chatId, message_id: messageId, reply_markup: markup(keyboard) });
 }
 
-/** Всплывающий ответ на нажатие кнопки. */
+/** Pop-up answer to a button press. */
 export async function answerCallback(id: string, text: string) {
   return call("answerCallbackQuery", { callback_query_id: id, text });
 }
 
 /**
- * Секрет, который Telegram присылает в заголовке каждого запроса на вебхук.
- * Выводится из токена бота, чтобы не заводить ещё одну переменную.
+ * The secret Telegram sends in a header with every webhook request.
+ * Derived from the bot token so we don't need yet another variable.
  */
 export function webhookSecret() {
   const token = process.env.TELEGRAM_BOT_TOKEN;

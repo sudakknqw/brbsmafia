@@ -1,6 +1,6 @@
 /**
- * Отсвет цвета игры на стыке арта и страницы. Ставится парой: низ шапки
- * (edge="bottom") и верх контента — так на границе цвет совпадает и шва нет.
+ * Glow of the game color where the art meets the page. Used in pairs: bottom of the header
+ * (edge="bottom") and top of the content, so the colors match at the boundary and there's no seam.
  */
 export function AmbientTail({ edge = "top" }: { edge?: "top" | "bottom" }) {
   return (

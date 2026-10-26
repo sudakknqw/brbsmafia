@@ -17,11 +17,11 @@ const FIELD: Record<ArtKind, "cover_url" | "hero_url" | "header_url" | "logo_url
 };
 
 /**
- * Свои картинки игры: обложка, арт, шапка, логотип. Файл подгоняется под
- * размеры Steam в браузере, ложится в хранилище и сразу виден у всех.
+ * Custom game art: cover, hero, header, logo. The file is fitted to
+ * Steam's sizes in the browser, uploaded to storage and immediately visible to everyone.
  */
 export function GameArtEditor({ game, onRemove }: { game: Game; onRemove?: () => void }) {
-  // Свои URL поверх серверных — превью меняется сразу, не дожидаясь обновления страницы.
+  // Local URLs over the server ones: the preview updates right away, without waiting for a refresh.
   const [local, setLocal] = useState<Partial<Record<ArtKind, string | null>>>({});
   const [busy, setBusy] = useState<ArtKind | null>(null);
   const [error, setError] = useState<string | null>(null);

@@ -7,12 +7,12 @@ import { gameArt } from "./steam";
 import { addDays, dateLong, gamingDay, hourStart, weekdayLong } from "./time";
 import type { DayEntry, Game, Member } from "./types";
 
-// Discord сам показывает <t:…:t> по часам того, кто читает.
+// Discord renders <t:…:t> in each reader's own time zone.
 const ts = (d: Date) => `<t:${Math.floor(d.getTime() / 1000)}:t>`;
 
 /**
- * Одно сообщение на игровой день: если сегодняшнее уже есть — правим его,
- * иначе публикуем новое. Вызывается после каждого изменения и по крону.
+ * One message per gaming day: if today's already exists, edit it,
+ * otherwise post a new one. Called after every change and by the cron job.
  */
 export async function syncDiscord() {
   const webhook = process.env.DISCORD_WEBHOOK_URL;
@@ -24,7 +24,7 @@ export async function syncDiscord() {
 
   const [{ data: memberRows }, { data: entryRows }, { data: gameRows }, { data: state }] = await Promise.all([
     db.from("members").select("joined_at, profiles!members_user_id_fkey(id, name, avatar_url, timezone)").order("joined_at"),
-    // «*»: заметки к дню (010_day_notes.sql) — если миграцию уже запустили.
+    // "*": includes day notes (010_day_notes.sql) once that migration has run.
     db.from("day_entries").select("*").gte("day", addDays(day, -1)).lte("day", addDays(day, 1)),
     db.from("games").select("id, steam_appid, name"),
     db.from("app_state").select("value").eq("key", "discord_message").maybeSingle(),
@@ -89,7 +89,7 @@ export async function syncDiscord() {
   await db.from("app_state").upsert({ key: "discord_message", value: { day, id: message.id } });
 }
 
-/** Заметку пишут люди: звёздочки и подчёркивания не должны ломать разметку сообщения. */
+/** Notes are written by people: asterisks and underscores must not break the message markdown. */
 const escapeMarkdown = (text: string) => text.replace(/[\\*_~`|>]/g, "\\$&");
 
 function toRanges(hours: number[]): [number, number][] {
@@ -102,7 +102,7 @@ function toRanges(hours: number[]): [number, number][] {
   return out;
 }
 
-// ——— Сборы пати ———
+// ——— Sessions ———
 
 type GatheringRow = {
   id: number;
@@ -116,8 +116,8 @@ type GatheringRow = {
 };
 
 /**
- * Сообщение о сборе: при создании — новое, с упоминанием всех, кто свободен
- * в это окно; дальше — правим его же, когда кто-то жмёт «В деле» или «Не пойду».
+ * Session message: posted on creation, mentioning everyone free
+ * in that window; then the same message is edited when someone answers In or Out.
  */
 export async function syncGatheringMessage(gatheringId: number, mentionIds: string[] = []) {
   const webhook = process.env.DISCORD_WEBHOOK_URL;
@@ -133,7 +133,7 @@ export async function syncGatheringMessage(gatheringId: number, mentionIds: stri
 
   const ids = [...new Set([g.created_by, ...g.members.map((m) => m.user_id), ...mentionIds].filter(Boolean))] as string[];
   const [{ data: profiles }, { data: game }] = await Promise.all([
-    // «*», а не список колонок: discord_id есть не у всех баз (старые установки), без неё просто не будет упоминаний.
+    // "*" rather than a column list: discord_id doesn't exist in every database (older setups); without it there are simply no mentions.
     db.from("profiles").select("*").in("id", ids),
     g.game_id ? db.from("games").select("*").eq("id", g.game_id).maybeSingle<Game>() : Promise.resolve({ data: null }),
   ]);
@@ -146,8 +146,8 @@ export async function syncGatheringMessage(gatheringId: number, mentionIds: stri
   const pings = mentionIds.map((id) => byId.get(id)?.discord_id).filter(Boolean) as string[];
 
   const body = {
-    // Только упоминания свободных — чтобы пришло уведомление; всё остальное в карточке.
-    // При правках упоминаний нет, и Discord оставляет прежний текст как есть.
+    // Only mentions of free people, so they get a notification; everything else is in the embed.
+    // Edits carry no mentions, and Discord keeps the previous content as is.
     content: pings.length ? pings.map((d) => `<@${d}>`).join(" ") : undefined,
     embeds: [
       {
@@ -161,7 +161,7 @@ export async function syncGatheringMessage(gatheringId: number, mentionIds: stri
         image: game && gameArt(game).header[0] ? { url: gameArt(game).header[0] } : undefined,
       },
     ],
-    // Пингуем только при создании; правки сообщения никого не дёргают.
+    // Ping only on creation; edits don't notify anyone.
     allowed_mentions: g.discord_message_id ? { parse: [] } : { parse: [], users: pings },
   };
 
@@ -186,7 +186,7 @@ export async function syncGatheringMessage(gatheringId: number, mentionIds: stri
   await db.from("gatherings").update({ discord_message_id: message.id }).eq("id", g.id);
 }
 
-/** Сбор отменили — убираем его сообщение из канала. */
+/** Session cancelled: remove its message from the channel. */
 export async function deleteGatheringMessage(messageId: string | null) {
   const webhook = process.env.DISCORD_WEBHOOK_URL;
   if (!webhook || !messageId) return;

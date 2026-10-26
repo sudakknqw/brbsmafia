@@ -1,14 +1,14 @@
--- brbs mafia: уборка после переезда на вход через Telegram.
--- Запускать один раз в Supabase → SQL Editor → New query → Run (повторный запуск безопасен).
+-- brbs mafia: cleanup after moving to Telegram login.
+-- Run once in Supabase → SQL Editor → New query → Run (safe to re-run).
 --
--- Что делает: убирает приглашения (вход теперь только для участников группы в Telegram),
--- профиль при первом входе заполняется без Discord.
--- Колонку discord_id оставляем: по ней бот упоминает людей (@ник) в Discord-сообщении о сессии.
+-- What it does: removes invites (login is now for Telegram group members only),
+-- and the profile is filled on first login without Discord.
+-- discord_id is kept: the bot uses it to mention people (@name) in the Discord session message.
 
 drop table if exists public.invites cascade;
 
--- Профиль при первом входе: ник и фото, которые сервер передал из Telegram (api/tg/auth).
--- Фото берём только из Telegram — то же правило, что у проверки аватарки (008_hardening.sql).
+-- Profile on first login: name and photo the server passed from Telegram (api/tg/auth).
+-- Photos only from Telegram: the same rule as the avatar check (008_hardening.sql).
 create or replace function public.handle_new_user() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin

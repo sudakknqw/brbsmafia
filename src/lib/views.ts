@@ -1,5 +1,5 @@
-// Из сырых данных — то, что показывают экраны. Без обращения к базе,
-// поэтому этим же пользуется страница предпросмотра с выдуманными данными.
+// Turns raw data into what the screens show. No database access,
+// which is why the preview page with made-up data uses it too.
 import { dayStats, entryFor } from "./overlap";
 import { noMatchPhrase, personalPhrase, silentPhrase } from "./phrases";
 import { addDays, dateLong, DAY_HOURS, dayNumber, dayWindow, formatTime, hourStart, weekdayLong, weekdayShort, weekStart } from "./time";
@@ -13,7 +13,7 @@ export type CrewData = {
   wants: Want[];
   recent: Game[];
   gatherings: Gathering[];
-  /** Игра для пустой шапки, выбранная на сервере случайно (браузер не пересчитывает). */
+  /** Game for an empty header, picked randomly on the server (the browser doesn't recompute it). */
   fallbackGameId: number | null;
   now: Date;
   today: string;
@@ -21,10 +21,10 @@ export type CrewData = {
 
 export type Spotlight = {
   game: Game | null;
-  /** Игру выбрали люди (а не подставили любую из библиотеки). */
+  /** The game was picked by people (rather than any game from the library). */
   picked: boolean;
   day: string;
-  when: string | null; // «Сегодня, 21:00 – 23:00»
+  when: string | null; // "Today, 21:00 – 23:00"
   people: Member[];
   freeCount: number;
 };
@@ -32,7 +32,7 @@ export type Spotlight = {
 export type GatheringView = {
   id: number;
   day: string;
-  when: string; // «21:00 – 23:00» по часам зрителя
+  when: string; // "21:00 – 23:00" in the viewer's time
   gameName: string;
   creator: Member | null;
   going: Member[];
@@ -42,9 +42,9 @@ export type GatheringView = {
 };
 
 /**
- * Сбор на день — в том виде, как его показывают экраны. Ищем по времени начала
- * в игровом дне ЗРИТЕЛЯ: у друга в другом поясе тот же сбор может приходиться
- * на соседнюю дату. Закончившийся сбор не показываем.
+ * The day's session, shaped for the screens. Matched by start time
+ * within the VIEWER's gaming day: for a friend in another zone the same session may fall
+ * on the neighbouring date. A finished session is not shown.
  */
 export function gatheringView(data: CrewData, day: string): GatheringView | null {
   const { start, end } = dayWindow(day, data.me.timezone);
@@ -90,7 +90,7 @@ function hourLabels(day: string, tz: string) {
   return Array.from({ length: DAY_HOURS + 1 }, (_, i) => formatTime(hourStart(day, i, tz), tz));
 }
 
-/** Самая популярная игра среди людей (по выбору на день, затем по статусам). */
+/** The most popular game among people (by picks for the day, then by statuses). */
 function leadingGame(data: CrewData, day: string, peopleIds: string[]): Game | null {
   const score = new Map<number, number>();
   for (const id of peopleIds) {
@@ -103,7 +103,7 @@ function leadingGame(data: CrewData, day: string, peopleIds: string[]): Game | n
   return data.games.find((g) => g.id === best?.[0]) ?? null;
 }
 
-/** Если никто ничего не выбрал — случайная игра из библиотеки (выбрана на сервере). */
+/** If nobody picked anything, a random game from the library (picked on the server). */
 function anyGame(data: CrewData): Game | null {
   return data.games.find((g) => g.id === data.fallbackGameId) ?? data.games[0] ?? null;
 }
@@ -123,13 +123,13 @@ export function editorSeed(data: CrewData, day: string): EditorSeed {
 
 export function buildHome(data: CrewData) {
   const tz = data.me.timezone;
-  // Неделя всегда с понедельника по воскресенье, сегодняшний день внутри неё «переезжает».
+  // The week is always Monday to Sunday; today "moves" within it.
   const monday = weekStart(data.today);
   const week = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
   const days = week.map((day) => ({ day, ...dayStats(day, tz, data.members, data.entries) }));
 
-  // Прожектор: ближайший день, где кто-то совпал; иначе — что хотят прямо сейчас.
-  // Сегодняшнее окно, которое уже прошло, не в счёт — смотрим дальше по неделе.
+  // Spotlight: the nearest day where someone overlaps; otherwise what people want right now.
+  // Today's window that has already passed doesn't count; look further into the week.
   const lit = days.find(
     (d) =>
       d.day >= data.today &&
@@ -208,7 +208,7 @@ export function buildDay(data: CrewData, day: string) {
       const hours = freeHours.get(m.id) ?? [];
       const state: keyof typeof order = hours.length ? "free" : entry?.status === "busy" ? "busy" : "silent";
       const note = state === "silent" ? silentPhrase(m.id, day) : state === "busy" ? personalPhrase(m.id) : null;
-      // Своя заметка человека к дню («после 23 без микрофона») — только рядом с отмеченным временем.
+      // The person's own note for the day ("no mic after 11pm"), only next to marked time.
       const comment = state === "free" ? entry?.note?.trim() || null : null;
       return { member: m, hours, state, note, comment };
     })

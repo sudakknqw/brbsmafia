@@ -1,4 +1,4 @@
-/** Заглушка, пока сервер готовит страницу: переход ощущается мгновенным. */
+/** Placeholder while the server prepares the page, so navigation feels instant. */
 export function PageSkeleton({ hero = "tall" }: { hero?: "tall" | "short" }) {
   return (
     <div aria-busy="true" aria-label="Загрузка" className="page-skeleton">

@@ -4,7 +4,7 @@ import { useState, type ReactNode } from "react";
 import { offsetMinutes } from "@/lib/time";
 import { plural } from "@/lib/words";
 
-/** «Маша: сейчас 03:12. Это на 4 часа позже, чем у тебя» — при наведении или нажатии. */
+/** "Masha: it's 03:12 now. That's 4 hours later than you", on hover or tap. */
 export function FriendTime({
   name,
   timezone,
@@ -20,7 +20,7 @@ export function FriendTime({
 }) {
   const [text, setText] = useState("");
 
-  // Считаем в момент наведения: время «живое» и не расходится с сервером.
+  // Computed at hover time: the time is live and doesn't drift from the server.
   const refresh = () => {
     const now = new Date();
     const local = new Intl.DateTimeFormat("ru-RU", { timeZone: timezone, hour: "2-digit", minute: "2-digit" }).format(now);
@@ -28,7 +28,7 @@ export function FriendTime({
     const hours = Math.abs(diff);
     const shown = Number.isInteger(hours) ? String(hours) : hours.toFixed(1).replace(".", ",");
     const unit = Number.isInteger(hours) ? plural(hours, "час", "часа", "часов") : "часа";
-    // Ники не склоняем: «у Маша» звучит хуже, чем «Маша: сейчас…».
+    // Names are not declined (Russian grammar): "Masha: now…" reads better than a declined form.
     const relation = diff === 0 ? "Так же, как у тебя" : `Это на ${shown} ${unit} ${diff > 0 ? "позже" : "раньше"}, чем у тебя`;
     setText(`${name}: сейчас ${local}. ${relation}`);
   };

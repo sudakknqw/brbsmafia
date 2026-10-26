@@ -7,8 +7,8 @@ import { steamArt } from "@/lib/steam";
 type Result = { appid: number; name: string };
 
 /**
- * Поиск игры в Steam. Найденная игра добавляется в общую библиотеку
- * (если её там ещё нет) и сразу отдаётся наружу через onPick.
+ * Steam game search. The picked game is added to the shared library
+ * (if it isn't there yet) and returned through onPick right away.
  */
 export function GameSearch({ onPick }: { onPick: (gameId: number, fromSteam: boolean) => void }) {
   const [term, setTerm] = useState("");

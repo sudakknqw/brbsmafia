@@ -3,7 +3,7 @@ import { TelegramGate } from "@/components/telegram/TelegramGate";
 import { Wordmark } from "@/components/Wordmark";
 import { getViewer } from "@/lib/crew";
 
-// Вход: внутри Telegram — автоматически, в браузере — кнопка «Открыть в Telegram».
+// Login: automatic inside Telegram; in a browser, an "Open in Telegram" button.
 export default async function WelcomePage() {
   const viewer = await getViewer();
   if (viewer.isMember) redirect("/");

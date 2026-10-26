@@ -7,8 +7,8 @@ const key = () => process.env.STEAM_API_KEY;
 export const steamConfigured = () => !!key();
 
 /**
- * Steam ID из того, что вставили: ссылка на профиль (/profiles/7656… или /id/ник),
- * сам 17-значный ID или просто ник из ссылки.
+ * Steam ID from whatever was pasted: a profile link (/profiles/7656… or /id/name),
+ * the 17-digit ID itself, or just the vanity name from the link.
  */
 export async function resolveSteamId(input: string): Promise<string | null> {
   const s = input.trim();
@@ -40,8 +40,8 @@ type OwnedGame = {
 };
 
 /**
- * Обновляет, какие игры у человека есть и сколько он в них играет.
- * private — игровая информация в профиле скрыта (Steam тогда отдаёт пустой ответ).
+ * Refreshes which games a person owns and how much they play them.
+ * private: game details are hidden in the profile (Steam then returns an empty response).
  */
 export async function syncSteamPlaytime(
   userId: string,
@@ -83,7 +83,7 @@ export async function syncSteamPlaytime(
   return "ok";
 }
 
-/** Раз в сутки: обновить всех, кто указал профиль, и добавить общие игры. */
+/** Once a day: refresh everyone with a linked profile and add shared games. */
 export async function syncAllSteam() {
   if (!key()) return 0;
   const { data } = await createAdminClient()
@@ -99,7 +99,7 @@ export async function syncAllSteam() {
 
 const DISMISSED = "steam_dismissed";
 
-/** Игры Steam, которые сами в библиотеку больше не добавляются: их удалили вручную или это не игра. */
+/** Steam games that are no longer auto-added to the library: removed by hand, or not a game. */
 async function loadDismissed(
   db: ReturnType<typeof createAdminClient>,
 ): Promise<number[]> {
@@ -120,17 +120,17 @@ export async function dismissSteamGame(appid: number) {
       .upsert({ key: DISMISSED, value: [...list, appid] });
 }
 
-// Сколько новых игр проверять за раз: магазин Steam ограничивает частые запросы.
+// How many new games to check per run: the Steam store rate-limits frequent requests.
 const ADD_PER_RUN = 60;
 
 /**
- * Игры, которые есть хотя бы у двоих из компании, сами попадают в библиотеку.
- * Добавленные вручную не трогаем; удалённые из библиотеки не возвращаем.
+ * Games owned by at least two crew members are added to the library automatically.
+ * Manually added ones are left alone; ones removed from the library are not brought back.
  */
 export async function addSharedGames(): Promise<number> {
   const db = createAdminClient();
   const owners = new Map<number, number>();
-  // Строк может быть тысячи, а база отдаёт не больше 1000 за раз.
+  // There can be thousands of rows, and the database returns at most 1000 at a time.
   for (let from = 0; ; from += 1000) {
     const { data, error } = await db
       .from("steam_playtime")
@@ -165,14 +165,14 @@ export async function addSharedGames(): Promise<number> {
         cache: "no-store",
       },
     ).catch(() => null);
-    if (!res?.ok) break; // Steam попросил подождать — продолжим в следующий раз
+    if (!res?.ok) break; // Steam asked us to slow down: continue next time
     const info = (
       (await res.json().catch(() => null)) as Record<
         string,
         { success: boolean; data?: { type: string; name: string } }
       > | null
     )?.[appid];
-    // Нет в магазине (снята с продажи) или не игра — запоминаем, чтобы не спрашивать снова.
+    // Not in the store (delisted) or not a game: remember it so we don't ask again.
     if (!info?.success || !info.data || info.data.type !== "game") {
       notGames.push(appid);
       continue;

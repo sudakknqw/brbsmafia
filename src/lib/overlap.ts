@@ -2,9 +2,9 @@ import { DAY_HOURS, slotsToHours } from "./time";
 import type { BestWindow, DayEntry, Member } from "./types";
 
 /**
- * Для игрового дня зрителя считает, кто в какие часы свободен.
- * Слоты берутся из всех записей человека (соседние дни тоже), потому что
- * у друзей в других поясах «их» день сдвинут относительно нашего.
+ * For the viewer's gaming day, computes who is free in which hours.
+ * Slots are taken from all of a person's entries (neighbouring days too), because
+ * for friends in other time zones "their" day is shifted relative to ours.
  */
 export function dayStats(day: string, tz: string, members: Member[], entries: DayEntry[]) {
   const freeHours = new Map<string, number[]>();
@@ -20,7 +20,7 @@ export function dayStats(day: string, tz: string, members: Member[], entries: Da
   return { freeHours, counts, best: bestWindow(counts) };
 }
 
-/** Самый длинный отрезок с максимальным числом свободных (минимум двое). */
+/** The longest run with the maximum number of free people (at least two). */
 export function bestWindow(counts: number[]): BestWindow | null {
   const max = Math.max(...counts);
   if (max < 2) return null;
@@ -35,7 +35,7 @@ export function bestWindow(counts: number[]): BestWindow | null {
   return best;
 }
 
-/** Запись человека именно на этот день (его «Не могу», его игры). */
+/** A person's entry for exactly this day (their NO, their games). */
 export function entryFor(entries: DayEntry[], userId: string, day: string) {
   return entries.find((e) => e.user_id === userId && e.day === day);
 }

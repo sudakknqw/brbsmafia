@@ -11,7 +11,7 @@ export function steamArt(appid: number) {
   };
 }
 
-/** Цвет плашки для игр без обложки — стабильный по названию. */
+/** Plate color for games without a cover, stable per name. */
 const PLATES = ["#3C3489", "#085041", "#712B13", "#0C447C", "#72243E", "#444441", "#633806"];
 export function plateColor(name: string): string {
   let h = 0;
@@ -20,18 +20,18 @@ export function plateColor(name: string): string {
 }
 
 /**
- * Картинки игры по порядку предпочтения: свои загруженные, потом Steam.
- * Компоненты перебирают список, пока какая-нибудь не загрузится.
+ * Game images in order of preference: custom uploads first, then Steam.
+ * Components try the list until one of them loads.
  */
 export function gameArt(game: Game) {
   const steam = game.steam_appid ? steamArt(game.steam_appid) : null;
   const list = (...urls: (string | null | undefined)[]) => urls.filter((u): u is string => !!u);
   return {
     portrait: list(game.cover_url, steam?.portrait),
-    // Шапка — запасной вариант для вертикальной обложки (покажется по центру на размытом фоне).
+    // The header is the fallback for the portrait cover (shown centered on a blurred background).
     portraitFallback: list(game.header_url, steam?.header),
     hero: list(game.hero_url, steam?.hero),
-    // Если широкого арта нет — растянутая и размытая шапка.
+    // No wide art: a stretched and blurred header instead.
     heroFallback: list(game.header_url, steam?.header),
     header: list(game.header_url, steam?.header, game.hero_url),
     logo: list(game.logo_url, steam?.logo),

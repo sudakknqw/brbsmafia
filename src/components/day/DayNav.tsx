@@ -20,8 +20,8 @@ const style =
   "flex size-11 items-center justify-center rounded-full bg-white/15 transition hover:scale-105 hover:bg-white/20 active:scale-95";
 
 /**
- * Стрелки к соседним дням. В раскрытом дне на главной листают внутри недели
- * (onGo), на отдельной странице /day/… — обычные ссылки.
+ * Arrows to neighbouring days. In the expanded day on the home page they page within the week
+ * (onGo); on the standalone /day/… page they are plain links.
  */
 export function DayNav({
   prevDay,

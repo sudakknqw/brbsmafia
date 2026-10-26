@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-// Обновляет сессию Supabase на каждом запросе.
+// Refreshes the Supabase session on every request.
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
 
@@ -25,7 +25,7 @@ export async function proxy(request: NextRequest) {
     },
   );
 
-  // getClaims проверяет токен локально, без похода на сервер авторизации.
+  // getClaims verifies the token locally, without a round trip to the auth server.
   await supabase.auth.getClaims();
   return response;
 }

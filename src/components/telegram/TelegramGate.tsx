@@ -10,14 +10,14 @@ const MESSAGES: Record<string, string> = {
 };
 
 /**
- * Вход без кнопок: внутри Telegram сразу отправляем подписанные данные на сервер
- * и уходим на главную. В обычном браузере — предложение открыть в Telegram.
+ * Button-less login: inside Telegram the signed data is sent to the server right away
+ * and we go to the home page. In a regular browser, an offer to open it in Telegram.
  */
 export function TelegramGate({ appUrl }: { appUrl: string | null }) {
   const [state, setState] = useState<"checking" | "outside" | { error: string }>("checking");
 
   useEffect(() => {
-    // Скрипт Telegram грузится до страницы, но дадим ему мгновение на случай медленной сети.
+    // The Telegram script loads before the page, but give it a moment on slow networks.
     const timer = setTimeout(async () => {
       const app = telegram();
       if (!app) return setState("outside");

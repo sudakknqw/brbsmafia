@@ -1,8 +1,8 @@
-// Подписи и шутки сайта. Каждая берётся «случайно, но стабильно»:
-// для одного и того же человека и дня — одна и та же фраза, без мигания.
-// Список выбран в документе «brbs mafia — фразы на выбор».
+// Site captions and jokes. Each one is picked "randomly but stably":
+// the same person and day always get the same phrase, no flicker.
+// The list was picked by the crew from a longer shortlist.
 
-/** Кто ничего не отметил на день. */
+/** Someone who marked nothing for the day. */
 export const SILENT = [
   "молчит, гадёныш",
   "ушёл в туман",
@@ -21,13 +21,13 @@ export const SILENT = [
   "мама забрала комп",
 ];
 
-/** Кто нажал NO: предупредил честно, поэтому помягче. */
+/** Someone who pressed NO: they were upfront, so go easier on them. */
 export const BUSY = ["сегодня пас", "не в этот раз", "честно слился, уважаем", "на скамейке запасных", "не сегодня, друзья", "сохранился и вышел"];
 
-/** Общего окна нет. */
+/** No common window. */
 export const NO_MATCH = ["Пока никто не совпал", "Часовые пояса победили. Пока", "Никого. Совсем никого"];
 
-/** Кнопки сбора. */
+/** Session buttons. */
 export const JOIN = ["Я в деле", "Иду"];
 export const DECLINE = ["Пас", "Без меня", "Сегодня мимо"];
 
@@ -38,8 +38,8 @@ export function pick<T>(list: readonly T[], seed: string | number): T {
 }
 
 /**
- * Личные подписи: у этих людей вместо случайных фраз всегда одна своя —
- * когда молчат, когда NO и когда без статуса. По id, а не по нику: ник можно сменить.
+ * Personal captions: these people always get their own phrase instead of a random one,
+ * when silent, on NO and with no status. Keyed by id, not name: names can change.
  */
 const PERSONAL: Record<string, string> = {
   "41e352ad-bb2e-4b7e-b528-e7caa3d7657c": "ему похуй", // никита

@@ -4,9 +4,9 @@ import { useEffect } from "react";
 import { telegram } from "@/lib/tg";
 
 /**
- * Настройка окна мини-приложения: на весь экран (на компьютере — полноэкранно), цвета под сайт, свайп вниз
- * не закрывает приложение (мешал бы тянуть полосу времени). Один раз просим
- * разрешение писать в личку — для напоминаний за час до игры.
+ * Mini App window setup: expanded, colors matching the site, swipe-down
+ * doesn't close the app (it would interfere with dragging the time bar). Asks once
+ * for permission to send private messages, for the one-hour reminders.
  */
 export function TelegramSetup() {
   useEffect(() => {

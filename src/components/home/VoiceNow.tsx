@@ -10,7 +10,7 @@ import type { VoiceState } from "@/lib/voice";
 const OFF: VoiceState = { available: false };
 const POLL_MS = 60_000;
 
-// Выдуманные данные для /preview: там нет входа, и сервер всё равно ответил бы «недоступно».
+// Made-up data for /preview: there's no login there, so the server would answer "unavailable" anyway.
 const MOCK: VoiceState = {
   available: true,
   invite: "https://discord.gg/example",
@@ -30,8 +30,8 @@ function Speaker({ size = 14 }: { size?: number }) {
 }
 
 /**
- * Значок «кто сейчас в голосовом» в шапке главной. Опрашивает сервер раз в минуту,
- * пока вкладка на виду; никого нет или виджет Discord выключен — значка нет совсем.
+ * "Who is in voice" badge in the home header. Polls the server once a minute
+ * while the tab is visible; if nobody is there or the Discord widget is off, there's no badge at all.
  */
 export function VoiceNow() {
   const pathname = usePathname();
@@ -43,7 +43,7 @@ export function VoiceNow() {
     if (preview) return;
     let alive = true;
     let timer: ReturnType<typeof setInterval> | undefined;
-    // Ошибка сети — оставляем, что было: значок не мигает из-за одного неудачного запроса.
+    // Network error: keep the last result so the badge doesn't flicker on one failed request.
     const load = () =>
       fetch("/api/discord/voice", { cache: "no-store" })
         .then((r) => (r.ok ? (r.json() as Promise<VoiceState>) : OFF))
@@ -54,7 +54,7 @@ export function VoiceNow() {
       load();
       timer = setInterval(load, POLL_MS);
     };
-    // Свернули приложение — не опрашиваем; вернулись — сразу обновляем.
+    // App in the background: stop polling; back in front: refresh right away.
     const onVisibility = () => (document.visibilityState === "visible" ? poll() : clearInterval(timer));
     if (document.visibilityState === "visible") poll();
     document.addEventListener("visibilitychange", onVisibility);
@@ -96,7 +96,7 @@ export function VoiceNow() {
           </span>
           <span className="tabular-nums">
             {people.length}
-            {/* На узком телефоне рядом логотип и аватарка — оставляем только число */}
+            {/* On narrow phones the wordmark and avatar are next to it, so only the number is shown */}
             <span className="hidden min-[400px]:inline"> в голосовом</span>
           </span>
         </button>

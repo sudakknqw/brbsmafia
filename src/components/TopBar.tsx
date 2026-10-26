@@ -4,7 +4,7 @@ import { Avatar } from "./Avatar";
 import { Wordmark } from "./Wordmark";
 import type { Member } from "@/lib/types";
 
-// extra — что-то маленькое слева от аватарки (на главной — кто в голосовом).
+// extra: something small left of the avatar (on the home page, who is in voice).
 export function TopBar({ me, back, extra }: { me: Member; back?: boolean; extra?: ReactNode }) {
   return (
     <header className="relative z-10 mx-auto flex w-full max-w-6xl items-center justify-between px-4 pt-[max(calc(1rem+var(--tg-safe-area-inset-top,0px)+var(--tg-content-safe-area-inset-top,0px)),env(safe-area-inset-top))] pb-4 sm:px-8 sm:pt-[calc(1.5rem+var(--tg-safe-area-inset-top,0px)+var(--tg-content-safe-area-inset-top,0px))]">

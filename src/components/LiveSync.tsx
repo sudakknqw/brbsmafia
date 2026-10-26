@@ -7,8 +7,8 @@ import { syncTimezone } from "@/app/actions";
 import { addDays, DAY_START_HOUR, gamingDay, zonedToUtc } from "@/lib/time";
 
 /**
- * Живые обновления: кто-то что-то поменял — страница перерисовывается.
- * Заодно запоминает часовой пояс браузера, чтобы время было «своим».
+ * Live updates: when someone changes something, the page re-renders.
+ * Also stores the browser's time zone so times are shown locally.
  */
 export function LiveSync({ timezone, meId }: { timezone: string; meId: string }) {
   const router = useRouter();
@@ -21,8 +21,8 @@ export function LiveSync({ timezone, meId }: { timezone: string; meId: string })
     }
   }, [timezone, router]);
 
-  // Новый игровой день начинается в 08:00 — открытая вкладка перерисуется сама:
-  // «Сегодня» переедет на следующую плитку, а в понедельник сменится неделя.
+  // A new gaming day starts at 08:00; an open tab re-renders by itself:
+  // "Today" moves to the next tile, and on Monday the week changes.
   useEffect(() => {
     const now = new Date();
     const next = zonedToUtc(addDays(gamingDay(now, timezone), 1), DAY_START_HOUR, timezone);
@@ -32,7 +32,7 @@ export function LiveSync({ timezone, meId }: { timezone: string; meId: string })
 
   useEffect(() => {
     const supabase = createClient();
-    // Свои изменения уже пришли с ответом сервера — второй раз не перерисовываем.
+    // Our own changes already came with the server response, so don't re-render twice.
     const refresh = (payload: { new: Record<string, unknown>; old: Record<string, unknown> }) => {
       const row = { ...payload.old, ...payload.new };
       if (row.user_id === meId || row.added_by === meId || row.id === meId) return;

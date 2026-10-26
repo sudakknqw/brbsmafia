@@ -6,7 +6,7 @@ import "./globals.css";
 
 const onest = Onest({ variable: "--font-onest", subsets: ["latin", "cyrillic"], weight: ["400", "500", "600", "800"] });
 
-// Превью ссылки в Telegram и Discord: картинка — app/opengraph-image.png (надпись BRABUS).
+// Link previews in Telegram and Discord use app/opengraph-image.png (the BRABUS wordmark).
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://brbsmafia.vercel.app"),
   title: "brbs mafia",
@@ -31,7 +31,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="ru" className={`${onest.variable} h-full`} suppressHydrationWarning>
       <body className="min-h-full font-sans">
-        {/* Мини-приложение Telegram: даёт данные о вошедшем, кнопку «Назад», вибрацию. */}
+        {/* Telegram Mini App SDK: user data, the Back button, haptics. */}
         <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
         <TelegramSetup />
         {children}

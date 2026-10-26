@@ -1,4 +1,4 @@
-// Собирательные числительные: «четверо», а не «4 человека» — так говорят друзья.
+// Collective numerals (Russian "chetvero" rather than "4 people"): that's how friends talk.
 const COLLECTIVE = ["никто", "один", "двое", "трое", "четверо", "пятеро", "шестеро", "семеро", "восьмеро", "девятеро", "десятеро"];
 
 export function people(n: number): string {
@@ -15,9 +15,9 @@ export function plural(n: number, one: string, few: string, many: string): strin
 
 
 /**
- * Кто именно: один — по нику («Хочет Лёша»), двое — оба ника
- * («Хотят Лёша и Маша»), трое и больше — числом («Хотят трое»).
- * Если это только ты — глагол на «ты»: «Хочешь только ты» (you = «Хочешь»).
+ * Who exactly: one by name ("Lyosha wants"), two by both names
+ * ("Lyosha and Masha want"), three or more as a number ("three want").
+ * If it's only you, a second-person verb: "only you want" (you = the second-person form).
  */
 export function who(names: string[], one: string, many: string, you: string = one): string {
   if (names.length === 1 && names[0] === "ты") return `${you} только ты`;

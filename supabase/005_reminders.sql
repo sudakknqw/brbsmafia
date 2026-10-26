@@ -1,6 +1,6 @@
--- brbs mafia: напоминания за час — планировщик Supabase раз в 10 минут дёргает сайт.
--- Запускать один раз в Supabase → SQL Editor → New query → Run,
--- предварительно заменив ВСТАВЬ_CRON_SECRET на значение CRON_SECRET из Vercel.
+-- brbs mafia: one-hour reminders; the Supabase scheduler calls the site every 10 minutes.
+-- Run once in Supabase → SQL Editor → New query → Run,
+-- after replacing PASTE_CRON_SECRET with the CRON_SECRET value from Vercel.
 
 create extension if not exists pg_cron;
 create extension if not exists pg_net;
@@ -11,7 +11,7 @@ select cron.schedule(
   $$
   select net.http_get(
     url := 'https://brbsmafia.vercel.app/api/tg/remind',
-    headers := jsonb_build_object('Authorization', 'Bearer ВСТАВЬ_CRON_SECRET')
+    headers := jsonb_build_object('Authorization', 'Bearer PASTE_CRON_SECRET')
   );
   $$
 );

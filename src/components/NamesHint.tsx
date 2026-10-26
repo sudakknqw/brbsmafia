@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-/** При наведении (или фокусе) показывает ники всех, о ком речь. */
+/** On hover (or focus) shows the names of everyone involved. */
 export function NamesHint({ names, children, className = "" }: { names: string[]; children: ReactNode; className?: string }) {
   if (!names.length) return <>{children}</>;
   return (

@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
-// Чистая логика без DOM — хватает node-окружения; алиас тот же, что в tsconfig.
+// Pure logic without a DOM: the node environment is enough; same alias as in tsconfig.
 export default defineConfig({
   resolve: {
     alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },

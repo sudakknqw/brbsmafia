@@ -5,9 +5,9 @@ import { DAY_HOURS } from "@/lib/time";
 import { pct, type Range } from "./timeScale";
 
 /**
- * Заметка к дню под полосой времени: мелко, курсивом, в одну строку.
- * Тянется от начала полосы вправо (или к её концу влево, если полоса во второй
- * половине дня). Полный текст — при наведении, а на телефоне — по нажатию.
+ * Day note under the time bar: small, italic, one line.
+ * Runs right from the bar's start (or left to its end if the bar is in the second
+ * half of the day). Full text on hover, or on tap on phones.
  */
 export function DayNote({ text, range, className = "" }: { text: string; range: Range; className?: string }) {
   const [open, setOpen] = useState(false);

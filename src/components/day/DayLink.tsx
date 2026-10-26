@@ -5,8 +5,8 @@ import type { ReactNode } from "react";
 import { useOpenDay } from "./DayOverlay";
 
 /**
- * Ссылка на день. На главной раскрывает день поверх страницы;
- * с зажатым Ctrl/Cmd или без главной — обычный переход.
+ * Link to a day. On the home page it expands the day over the page;
+ * with Ctrl/Cmd held or outside the home page it's a normal navigation.
  */
 export function DayLink({
   day,

@@ -12,7 +12,7 @@ import { addDays, gamingDay, weekStart } from "./time";
 import type { CrewData } from "./views";
 export { WANT_TTL_HOURS, MAX_WANTS, MAX_DAY_GAMES } from "./limits";
 
-// cache: за один запрос страницы пользователь проверяется один раз.
+// cache: the user is checked once per page request.
 export const getViewer = cache(async () => {
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
@@ -26,7 +26,7 @@ export const getViewer = cache(async () => {
   return { supabase, user: { id: userId }, profile, isMember: !!member };
 });
 
-/** Пускает дальше только участника, прошедшего первый вход. */
+/** Lets through only members who finished onboarding. */
 export async function requireMember() {
   const viewer = await getViewer();
   if (!viewer.user || !viewer.isMember) redirect("/welcome");
@@ -43,7 +43,7 @@ export async function loadMembers(supabase: Supabase): Promise<Member[]> {
 }
 
 export async function loadEntries(supabase: Supabase, from: string, to: string): Promise<DayEntry[]> {
-  // «*», а не список колонок: так работает и до, и после миграции с заметками.
+  // "*" rather than a column list: works both before and after the notes migration.
   const { data } = await supabase
     .from("day_entries")
     .select("*")
@@ -53,18 +53,18 @@ export async function loadEntries(supabase: Supabase, from: string, to: string):
 }
 
 export async function loadGames(supabase: Supabase): Promise<Game[]> {
-  // «*», а не список колонок: так работает и до, и после миграции со своими картинками.
+  // "*" rather than a column list: works both before and after the custom art migration.
   const { data } = await supabase.from("games").select("*").order("created_at");
   return (data ?? []) as Game[];
 }
 
-/** Игры с наигранным временем всей компании. Если миграции 006 ещё нет — просто без него. */
+/** Games with the whole crew's playtime. If migration 006 isn't applied yet, just without it. */
 export async function withPlaytime(supabase: Supabase, games: Game[]): Promise<Game[]> {
   const appids = [...new Set(games.flatMap((g) => (g.steam_appid ? [g.steam_appid] : [])))];
   if (!appids.length) return games;
 
-  // PostgREST отдаёт не больше 1000 строк за раз, а библиотеки Steam целиком — это тысячи строк.
-  // Берём только игры из нашей библиотеки, без нулевого времени, и листаем страницами.
+  // PostgREST returns at most 1000 rows per request, and full Steam libraries are thousands of rows.
+  // Only take games from our library with non-zero playtime, and page through them.
   const PAGE = 1000;
   const rows: { steam_appid: number; recent_minutes: number; total_minutes: number }[] = [];
   for (let from = 0; ; from += PAGE) {
@@ -115,8 +115,8 @@ export async function loadRecentGameIds(supabase: Supabase, userId: string): Pro
 }
 
 /**
- * Свой порядок игр в библиотеке (008_hardening.sql). null — прочитать не вышло
- * (например, миграцию ещё не запускали): тогда порядок как у всех.
+ * Personal library order (008_hardening.sql). null means it couldn't be read
+ * (e.g. the migration hasn't run yet); then the default order is used.
  */
 export async function loadLibraryOrder(supabase: Supabase, userId: string): Promise<number[] | null> {
   const { data, error } = await supabase.from("library_order").select("game_ids").eq("user_id", userId).maybeSingle();
@@ -124,7 +124,7 @@ export async function loadLibraryOrder(supabase: Supabase, userId: string): Prom
   return ((data?.game_ids ?? []) as (number | string)[]).map(Number);
 }
 
-/** Всё, что нужно экранам, одним заходом: для недели вперёд и дня назад. */
+/** Everything the screens need in one go: a week ahead and a day back. */
 export async function loadCrewData(viewer: Awaited<ReturnType<typeof requireMember>>, from?: string, to?: string): Promise<CrewData> {
   const { supabase, profile: me } = viewer;
   const now = new Date();
@@ -140,7 +140,7 @@ export async function loadCrewData(viewer: Awaited<ReturnType<typeof requireMemb
     loadGatherings(supabase, rangeFrom, rangeTo),
     loadLibraryOrder(supabase, me.id),
   ]);
-  // Игры приходят уже в твоём порядке — так их и показывают библиотека и выбор игр на день.
+  // Games already come in your order; the library and the day's game picker show them that way.
   const games = personalOrder(allGames, order ?? []);
   const recent = recentIds.map((id) => games.find((g) => g.id === id)).filter((g): g is Game => !!g);
   const fallbackGameId = games.length ? games[Math.floor(Math.random() * games.length)].id : null;
@@ -148,9 +148,9 @@ export async function loadCrewData(viewer: Awaited<ReturnType<typeof requireMemb
 }
 
 /**
- * Сборы за период. Если таблиц ещё нет (миграцию не запускали) — просто пусто.
- * day у сбора — игровой день по часам компании, у зрителя он может быть соседним:
- * поэтому период берут с запасом в день, а к дню сбор привязывают по starts_at (gatheringView).
+ * Sessions for a period. If the tables don't exist yet (migration not run), just empty.
+ * A session's day is the gaming day in the crew time zone and may be the neighbouring day for a viewer,
+ * so the period has a day of margin and sessions are matched to days by starts_at (gatheringView).
  */
 export async function loadGatherings(supabase: Supabase, from: string, to: string): Promise<Gathering[]> {
   const { data, error } = await supabase
@@ -162,13 +162,13 @@ export async function loadGatherings(supabase: Supabase, from: string, to: strin
   return (data ?? []) as Gathering[];
 }
 
-/** Данные для итогов месяца: всё отмеченное и все сборы с начала месяца. */
+/** Data for the monthly stats: all marked time and all sessions since the start of the month. */
 export async function loadMonth(supabase: Supabase, today: string) {
   const monthStart = today.slice(0, 8) + "01";
   const [entries, gatherings, history] = await Promise.all([
     loadEntries(supabase, monthStart, today),
     loadGatherings(supabase, monthStart, today),
-    // Для «лучшего дня недели»: 8 недель назад (и день сверху — время может перетекать через полночь).
+    // For the "best weekday" card: 8 weeks back (plus a day on top, since time can spill past midnight).
     loadEntries(supabase, addDays(today, -HISTORY_DAYS - 1), today),
   ]);
   return { monthStart, entries, gatherings, history };

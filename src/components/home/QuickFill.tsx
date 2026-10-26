@@ -8,7 +8,7 @@ const OPTIONS = [
   { kind: "weekend", label: "Выходные" },
 ] as const;
 
-/** Быстрые кнопки: одним нажатием отметить типичное время. */
+/** Quick buttons: mark a typical time in one tap. */
 export function QuickFill() {
   const [done, setDone] = useState<string | null>(null);
   const [pending, start] = useTransition();

@@ -6,7 +6,7 @@ import { DAY_HOURS } from "@/lib/time";
 import { DayNote } from "./DayNote";
 import { pct, runs, toRange, type Row } from "./timeScale";
 
-/** Строки остальных — две ячейки сетки шкалы: имена и полосы. */
+/** Everyone else's rows: two cells of the timeline grid, names and bars. */
 export function FriendRows({ day, rows, hourLabels, viewerTz }: { day: string; rows: Row[]; hourLabels: string[]; viewerTz: string }) {
   return (
     <>

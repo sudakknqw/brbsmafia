@@ -6,7 +6,7 @@ import type { Member } from "@/lib/types";
 import { DayNote } from "./DayNote";
 import { pct, type Range } from "./timeScale";
 
-/** Красный кружок «NO»: не смогу в этот день. */
+/** Red "NO" circle: can't make it this day. */
 function NoButton({ active, onClick }: { active: boolean; onClick: () => void }) {
   return (
     <button
@@ -31,9 +31,9 @@ type Props = {
   busy: boolean;
   anchor: number | null;
   preview: Range | null;
-  /** Ключ полосы: меняется — анимация появления проигрывается заново. */
+  /** Bar key: when it changes, the appear animation replays. */
   grown: number;
-  /** Сохранённая заметка к дню — под полосой. */
+  /** Saved day note, under the bar. */
   note: string;
   onBusy: (value: boolean) => void;
   onBar: () => void;
@@ -42,13 +42,13 @@ type Props = {
 };
 
 /**
- * Своя строка — две ячейки сетки шкалы: имя с «NO» и полоса.
- * Пока времени нет, полоса разбита на часы: нажал начало, нажал конец.
+ * Your own row: two cells of the timeline grid, the name with NO and the bar.
+ * While no time is set, the bar is split into hours: tap the start, tap the end.
  */
 export function MyRow({ rowRef, member, hourLabels, range, busy, anchor, preview, grown, note, onBusy, onBar, onPick, onHover }: Props) {
   return (
     <>
-      {/* Своя строка: одна сплошная подсветка на обе колонки, без стыка посередине */}
+      {/* Own row: one continuous highlight across both columns, no seam in the middle */}
       <div className="pointer-events-none absolute -inset-x-2 top-7 h-14 rounded-2xl bg-white/[0.06]" aria-hidden="true" />
       <div ref={rowRef} id="my-row" className="relative flex h-14 items-center gap-2 pr-1">
         <Avatar id={member.id} name={member.name} url={member.avatar_url} size={26} />

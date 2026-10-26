@@ -1,7 +1,7 @@
 import { HeroArt } from "@/components/GameArt";
 import type { StatCard } from "@/lib/stats";
 
-/** Итоги месяца: сколько было сессий и игра месяца. */
+/** Monthly stats: number of sessions and the game of the month. */
 export function MonthStats({ cards }: { cards: StatCard[] }) {
   if (!cards.length) return null;
   return (

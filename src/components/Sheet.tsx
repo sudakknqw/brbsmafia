@@ -5,8 +5,8 @@ import { createPortal } from "react-dom";
 import { usePresence } from "@/lib/usePresence";
 
 /**
- * Шторка снизу на телефоне, окно по центру на компьютере.
- * Рисуется прямо в body, чтобы её не перекрывали блоки с артом.
+ * Bottom sheet on phones, centered dialog on desktop.
+ * Rendered straight into body so art blocks can't cover it.
  */
 export function Sheet({
   open,
@@ -31,9 +31,9 @@ export function Sheet({
     };
   }, [open, onClose]);
 
-  // Закрытая шторка ещё немного видна — уезжает вниз (на компьютере тает), а не пропадает рывком.
+  // A closed sheet stays visible briefly: it slides down (fades on desktop) instead of vanishing.
   const { mounted, closing } = usePresence(open, 260);
-  // Пока уезжает — показываем то, что было внутри в момент закрытия (его часто сразу обнуляют).
+  // While leaving, show what was inside at the moment of closing (callers often reset it immediately).
   const [last, setLast] = useState({ title, children });
   if (open && (last.title !== title || last.children !== children)) setLast({ title, children });
   const shown = closing ? last : { title, children };

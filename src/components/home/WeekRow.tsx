@@ -4,8 +4,8 @@ import { QuickFill } from "./QuickFill";
 import type { HomeModel } from "@/lib/views";
 
 /**
- * Неделя с понедельника по воскресенье. Сегодняшний день выделен рамкой
- * и «переезжает» по плиткам, прошедшие дни приглушены.
+ * The week from Monday to Sunday. Today is outlined
+ * and "moves" across the tiles; past days are dimmed.
  */
 export function WeekRow({ week, total }: { week: HomeModel["week"]; total: number }) {
   return (

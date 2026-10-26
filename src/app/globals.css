@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 /*
- * Лаунчер: тёмная консольная база, которую подкрашивает арт игры дня
- * (--ambient ставит компонент Ambient). Выделение — белое, как фокус на консоли.
+ * Launcher look: a dark console-like base tinted by the art of the game of the day
+ * (--ambient is set by the Ambient component). Selection is white, like console focus.
  */
 @theme {
   --color-ink: #050507;
@@ -14,7 +14,7 @@
   --color-line: rgb(255 255 255 / 0.1);
   --color-bad: #ff6b5e;
   --font-sans: var(--font-onest), -apple-system, "Segoe UI", sans-serif;
-  /* Мягкий старт и долгое торможение: без рывка в первые кадры. */
+  /* Soft start and long deceleration: no jerk in the first frames. */
   --ease-out: cubic-bezier(0.25, 0.6, 0.3, 1);
 }
 
@@ -26,9 +26,9 @@
 html {
   background: var(--color-ink);
 }
-/* Невидимые подсказки у правого края не должны расширять страницу:
-   на телефоне из-за них весь сайт становился шире экрана. clip, а не hidden, —
-   чтобы не ломать прокрутку и sticky. */
+/* Invisible tooltips near the right edge must not widen the page:
+   on phones they made the whole site wider than the screen. clip rather than hidden
+   so scrolling and sticky keep working. */
 html,
 body {
   overflow-x: clip;
@@ -62,7 +62,7 @@ button:disabled {
   scrollbar-width: none;
 }
 
-/* Плитка как на консоли: при наведении приподнимается и получает белую рамку. */
+/* Console-style tile: lifts on hover and gets a white outline. */
 .tile {
   transition:
     transform 0.18s var(--ease-out),
@@ -163,7 +163,7 @@ button:disabled {
     opacity: 0;
   }
 }
-/* Обложки, которые появляются при разворачивании библиотеки. */
+/* Covers that appear when the library is expanded. */
 @keyframes tile-in {
   from {
     opacity: 0;
@@ -185,8 +185,8 @@ button:disabled {
 .anim-pop {
   animation: pop 0.4s var(--ease-out) both;
 }
-/* backwards, а не both: после появления анимация не должна держать transform —
-   иначе перетаскивание (оно двигает обложку через transform) перестанет работать. */
+/* backwards rather than both: after appearing, the animation must not hold transform,
+   otherwise dragging (which moves the cover via transform) would stop working. */
 .anim-tile-in {
   animation: tile-in 0.5s var(--ease-out) backwards;
 }
@@ -215,7 +215,7 @@ button:disabled {
     animation-name: sheet-in-desktop;
   }
 }
-/* Уходы: короче появлений и с ускорением в конце — элемент «убирают», а не он тает. */
+/* Exits are shorter than entrances and accelerate at the end: the element is taken away, it doesn't fade. */
 .anim-sheet-out {
   animation: sheet-out 0.3s cubic-bezier(0.4, 0, 0.8, 0.6) both;
 }
@@ -231,7 +231,7 @@ button:disabled {
   transform-origin: top center;
   animation: popover-out 0.2s ease-in both;
 }
-/* Экран загрузки: при открытии и перезагрузке; после него в этой вкладке — обычные заглушки. */
+/* Splash screen on open and reload; afterwards this tab uses the regular skeletons. */
 html[data-splash-seen] .splash,
 html:not([data-splash-seen]) .page-skeleton {
   display: none;

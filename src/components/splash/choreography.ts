@@ -1,6 +1,6 @@
-// Восемь постановок «сбора пати» — своя для каждого числа участников (1–8).
-// Каждая отдаёт для каждого аватара кадры движения (смещение от центра,
-// масштаб, прозрачность) и задержку старта. Буква B стоит в центре.
+// Eight "party gathering" choreographies, one for each crew size (1–8).
+// Each returns motion keyframes for every avatar (offset from the center,
+// scale, opacity) and a start delay. The B letter sits in the center.
 
 export type Frame = { x: number; y: number; s?: number; o?: number; offset?: number };
 export type Move = { frames: Frame[]; delay: number; duration: number };
@@ -8,12 +8,12 @@ export type Move = { frames: Frame[]; delay: number; duration: number };
 const rad = (deg: number) => (deg * Math.PI) / 180;
 const at = (deg: number, r: number) => ({ x: Math.cos(rad(deg)) * r, y: Math.sin(rad(deg)) * r });
 
-/** Точки правильного многоугольника вокруг центра, первая — сверху. */
+/** Points of a regular polygon around the center, the first one at the top. */
 function ring(n: number, r: number, start = -90) {
   return Array.from({ length: n }, (_, i) => ({ deg: start + (360 / n) * i, ...at(start + (360 / n) * i, r) }));
 }
 
-/** Путь по дуге: от угла a до угла b, с радиусом r0 → r1. */
+/** Arc path from angle a to angle b, with radius r0 → r1. */
 function arc(a: number, b: number, r0: number, r1: number, steps = 8): Frame[] {
   return Array.from({ length: steps + 1 }, (_, i) => {
     const t = i / steps;
@@ -25,7 +25,7 @@ function arc(a: number, b: number, r0: number, r1: number, steps = 8): Frame[] {
 const FAR = 280;
 
 const plays: Record<number, () => Move[]> = {
-  // 1. Соло: падает сверху, отскакивает и встаёт рядом с B.
+  // 1. Solo: drops from above, bounces and lands next to B.
   1: () => [
     {
       delay: 0,
@@ -39,7 +39,7 @@ const plays: Record<number, () => Move[]> = {
     },
   ],
 
-  // 2. Дуэт: летят навстречу с двух сторон, проскакивают и встают по бокам.
+  // 2. Duo: fly in from both sides, overshoot, and settle on either side.
   2: () =>
     [-1, 1].map((side, i) => ({
       delay: i * 40,
@@ -51,7 +51,7 @@ const plays: Record<number, () => Move[]> = {
       ],
     })),
 
-  // 3. Тройка: закручиваются по спирали в треугольник.
+  // 3. Trio: spiral into a triangle.
   3: () =>
     ring(3, 72).map((p, i) => ({
       delay: i * 90,
@@ -59,7 +59,7 @@ const plays: Record<number, () => Move[]> = {
       frames: arc(p.deg - 200, p.deg, FAR, 72, 10),
     })),
 
-  // 4. Квадрат: заходят по диагоналям из углов экрана одновременно.
+  // 4. Square: all come in diagonally from the screen corners at once.
   4: () =>
     ring(4, 76, -135).map((p, i) => ({
       delay: i * 30,
@@ -71,7 +71,7 @@ const plays: Record<number, () => Move[]> = {
       ],
     })),
 
-  // 5. Стрелка часов: по одному появляются на своих местах по часовой.
+  // 5. Clock hand: appear in their places one by one, clockwise.
   5: () =>
     ring(5, 76).map((p, i) => ({
       delay: i * 130,
@@ -83,7 +83,7 @@ const plays: Record<number, () => Move[]> = {
       ],
     })),
 
-  // 6. Две волны: трое прилетают снаружи, трое вырастают изнутри из буквы.
+  // 6. Two waves: three fly in from outside, three grow out of the letter.
   6: () =>
     ring(6, 80).map((p, i) =>
       i % 2 === 0
@@ -99,7 +99,7 @@ const plays: Record<number, () => Move[]> = {
           },
     ),
 
-  // 7. Корона: поднимаются снизу и встают дугой над буквой, от центра к краям.
+  // 7. Crown: rise from below and form an arc over the letter, from the center outwards.
   7: () =>
     Array.from({ length: 7 }, (_, i) => {
       const deg = -90 + (i - 3) * 28;
@@ -115,19 +115,19 @@ const plays: Record<number, () => Move[]> = {
       };
     }),
 
-  // 8. Орбита: друг за другом влетают сверху и облетают круг до своего места.
+  // 8. Orbit: fly in from the top one after another and circle round to their spots.
   8: () =>
     ring(8, 84).map((p, i) => ({
       delay: i * 70,
       duration: 1000,
-      // Чем дальше место по кругу, тем длиннее облёт — хвост растягивается кольцом.
+      // The further the spot around the circle, the longer the orbit, so the tail stretches into a ring.
       frames: arc(-210, p.deg, FAR, 84, 14),
     })),
 };
 
-// Постановки задуманы в «базовых» единицах; на экране всё крупнее и чуть медленнее.
-export const SIZE = 1.45; // размах: расстояния от буквы
-export const TEMPO = 1.25; // темп: во сколько раз дольше базового
+// Choreographies are designed in "base" units; on screen everything is bigger and a bit slower.
+export const SIZE = 1.45; // scale: distances from the letter
+export const TEMPO = 1.25; // tempo: how many times slower than the base
 
 export function choreography(count: number): Move[] {
   const n = Math.max(1, Math.min(8, count));
@@ -138,7 +138,7 @@ export function choreography(count: number): Move[] {
   }));
 }
 
-/** Сколько длится выход всех участников (без финала). */
+/** How long the entrance of all members takes (without the finale). */
 export function entranceLength(moves: Move[]) {
   return Math.max(...moves.map((m) => m.delay + m.duration));
 }

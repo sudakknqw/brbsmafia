@@ -1,5 +1,5 @@
-// Итоги месяца: сколько было сессий и в какую игру играли чаще всего.
-// Считаются из сессий и отмеченного времени, без отдельной таблицы.
+// Monthly stats: how many sessions there were and which game was played most.
+// Computed from sessions and marked time, without a separate table.
 import { dayStats } from "./overlap";
 import { addDays, formatTime, hourStart, weekdayIndex, weekdayLong } from "./time";
 import type { DayEntry, Game, Gathering, Member } from "./types";
@@ -34,7 +34,7 @@ export function monthStats({ games, entries, gatherings, monthStart, best }: Inp
     },
   ];
 
-  // Игра месяца: чаще всего играли в неё, а если сессий не было — чаще всего выбирали на день.
+  // Game of the month: the most played one, or if there were no sessions, the most picked for a day.
   const tally = new Map<string, number>();
   if (gatherings.length) gatherings.forEach((g) => tally.set(g.game_name, (tally.get(g.game_name) ?? 0) + 1));
   else
@@ -59,11 +59,11 @@ export function monthStats({ games, entries, gatherings, monthStart, best }: Inp
   return { month, cards };
 }
 
-export const HISTORY_DAYS = 56; // восемь недель
+export const HISTORY_DAYS = 56; // eight weeks
 
 /**
- * Лучший день недели: в какой день за последние 8 недель вместе свободно больше всего народу
- * (в среднем по всем таким дням, включая те, где никто не совпал). Время — по часам смотрящего.
+ * Best weekday: the weekday on which, over the last 8 weeks, the most people were free together
+ * (averaged over all those days, including ones with no overlap). Time is in the viewer's zone.
  */
 export function bestWeekday({ members, entries, today, tz }: { members: Member[]; entries: DayEntry[]; today: string; tz: string }): StatCard | null {
   const byWeekday = Array.from({ length: 7 }, () => ({ days: 0, people: 0, met: 0, starts: new Map<string, number>() }));
@@ -80,13 +80,13 @@ export function bestWeekday({ members, entries, today, tz }: { members: Member[]
     const start = formatTime(hourStart(day, best.from, tz), tz);
     w.starts.set(start, (w.starts.get(start) ?? 0) + 1);
   }
-  if (met < 3) return null; // пока мало истории — не гадаем
+  if (met < 3) return null; // not enough history yet: don't guess
 
   const score = (w: (typeof byWeekday)[number]) => (w.days ? w.people / w.days : 0);
   const top = byWeekday.indexOf([...byWeekday].sort((a, b) => score(b) - score(a) || b.met - a.met)[0]);
   const w = byWeekday[top];
   if (!w.met) return null;
-  // Любая дата с нужным днём недели — только чтобы получить его название.
+  // Any date with the right weekday, only to get its name.
   const sample = Array.from({ length: 7 }, (_, i) => addDays(today, -i)).find((d) => weekdayIndex(d) === top)!;
   const usual = [...w.starts.entries()].sort((a, b) => b[1] - a[1])[0][0];
   return {

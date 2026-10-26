@@ -7,17 +7,17 @@ import { plural } from "@/lib/words";
 
 type Range = [number, number];
 
-// Геометрия циферблата (в единицах viewBox).
+// Dial geometry (in viewBox units).
 const SIZE = 300;
 const C = SIZE / 2;
-const R = 106; // радиус кольца
-const RING = 26; // толщина кольца
-const HEAT = R - RING / 2 - 9; // внутреннее кольцо «кто ещё свободен»
+const R = 106; // ring radius
+const RING = 26; // ring thickness
+const HEAT = R - RING / 2 - 9; // inner "who else is free" ring
 const LABELS = R + RING / 2 + 16;
 
 /**
- * Граница часа k (0…24 от начала игрового дня) → угол на циферблате.
- * Полночь сверху, полдень снизу, по часовой стрелке; игровой день начинается в 08:00.
+ * Hour boundary k (0…24 from the start of the gaming day) → angle on the dial.
+ * Midnight at the top, noon at the bottom, clockwise; the gaming day starts at 08:00.
  */
 const angleOf = (k: number) => (((DAY_START_HOUR + k) % 24) / 24) * Math.PI * 2;
 const point = (k: number, r: number) => {
@@ -25,7 +25,7 @@ const point = (k: number, r: number) => {
   return [C + r * Math.sin(a), C - r * Math.cos(a)] as const;
 };
 
-/** Дуга по кольцу от границы a до границы b (по часовой). */
+/** Arc along the ring from boundary a to boundary b (clockwise). */
 function arc(a: number, b: number, r: number) {
   if (b - a >= DAY_HOURS) return `M ${C} ${C - r} A ${r} ${r} 0 1 1 ${C - 0.01} ${C - r}`;
   const [x1, y1] = point(a, r);
@@ -35,9 +35,9 @@ function arc(a: number, b: number, r: number) {
 }
 
 /**
- * Циферблат на 24 часа для телефона: две точки — начало и конец свободного времени.
- * Тянуть можно за любую точку кольца — двигается ближайшая. Через 08:00 (границу
- * игрового дня) точки не перескакивают. Внутреннее кольцо светлее там, где свободны другие.
+ * 24-hour dial for phones: two handles mark the start and end of free time.
+ * You can grab any point of the ring and the nearest handle moves. Handles never jump across
+ * 08:00 (the gaming-day boundary). The inner ring is brighter where others are free.
  */
 export function TimeDial({
   value,
@@ -48,7 +48,7 @@ export function TimeDial({
   value: Range;
   onChange: (r: Range) => void;
   hourLabels: string[];
-  /** Сколько остальных свободно в каждый час дня. */
+  /** How many others are free in each hour of the day. */
   others: number[];
 }) {
   const svg = useRef<SVGSVGElement>(null);
@@ -56,7 +56,7 @@ export function TimeDial({
   const [a, b] = value;
   const maxOthers = Math.max(1, ...others);
 
-  /** Положение пальца → граница часа (дробная, 0…24 от начала игрового дня). */
+  /** Pointer position → hour boundary (fractional, 0…24 from the start of the gaming day). */
   const boundaryAt = (e: React.PointerEvent) => {
     const rect = svg.current!.getBoundingClientRect();
     const x = e.clientX - (rect.left + rect.width / 2);
@@ -72,7 +72,7 @@ export function TimeDial({
     let next: Range;
     if (which === "start") {
       k %= DAY_HOURS;
-      if (Math.abs(k - a) > DAY_HOURS / 2) k = a < DAY_HOURS / 2 ? 0 : DAY_HOURS - 1; // не через 08:00
+      if (Math.abs(k - a) > DAY_HOURS / 2) k = a < DAY_HOURS / 2 ? 0 : DAY_HOURS - 1; // never across 08:00
       next = [k, Math.max(b, k + 1)];
     } else {
       if (k === 0) k = DAY_HOURS;
@@ -86,12 +86,12 @@ export function TimeDial({
   };
 
   const down = (e: React.PointerEvent<SVGSVGElement>) => {
-    // Ближайшая к пальцу точка (по кругу).
+    // The handle closest to the pointer (around the circle).
     const k = boundaryAt(e);
     const dist = (x: number) => Math.min(Math.abs(k - x), DAY_HOURS - Math.abs(k - x));
     dragging.current = dist(a % DAY_HOURS) <= dist(b % DAY_HOURS) ? "start" : "end";
     try {
-      e.currentTarget.setPointerCapture(e.pointerId); // палец может уйти за круг — всё равно тянем
+      e.currentTarget.setPointerCapture(e.pointerId); // the finger may leave the circle; keep dragging anyway
     } catch {}
     move(e);
   };
@@ -113,10 +113,10 @@ export function TimeDial({
       role="group"
       aria-label={`Свободен ${hourLabels[a]} – ${hourLabels[b]}`}
     >
-      {/* Кольцо */}
+      {/* Ring */}
       <circle cx={C} cy={C} r={R} fill="none" stroke="rgb(255 255 255 / 0.08)" strokeWidth={RING} />
 
-      {/* Кто ещё свободен: чем светлее деление, тем больше друзей в этот час */}
+      {/* Who else is free: the brighter the tick, the more friends that hour */}
       {others.map((n, i) =>
         n > 0 ? (
           <path
@@ -131,7 +131,7 @@ export function TimeDial({
         ) : null,
       )}
 
-      {/* Подписи часов: через три */}
+      {/* Hour labels: every third hour */}
       {Array.from({ length: 8 }, (_, i) => i * 3).map((clock) => {
         const k = (clock - DAY_START_HOUR + 24) % 24;
         const [x, y] = point(k, LABELS);
@@ -142,13 +142,13 @@ export function TimeDial({
         );
       })}
 
-      {/* Моё время */}
+      {/* My time */}
       <path d={arc(a, b, R)} fill="none" stroke="#f4f4f6" strokeWidth={RING} strokeLinecap="round" />
 
-      {/* Граница игрового дня — 08:00 */}
+      {/* Gaming-day boundary, 08:00 */}
       <line x1={seamIn[0]} y1={seamIn[1]} x2={seamOut[0]} y2={seamOut[1]} stroke="#050507" strokeWidth={3} />
 
-      {/* Точки */}
+      {/* Handles */}
       {[
         [sx, sy],
         [ex, ey],
@@ -156,7 +156,7 @@ export function TimeDial({
         <circle key={i} cx={x} cy={y} r={15} fill="#050507" stroke="#f4f4f6" strokeWidth={4} />
       ))}
 
-      {/* Центр */}
+      {/* Center */}
       <text x={C} y={C - 6} textAnchor="middle" fontSize={20} fontWeight={700} fill="#f4f4f6" style={{ fontVariantNumeric: "tabular-nums" }}>
         {hourLabels[a]} – {hourLabels[b]}
       </text>

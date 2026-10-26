@@ -23,16 +23,16 @@ import { gameArt } from "@/lib/steam";
 import { haptic } from "@/lib/tg";
 import type { Game, Member, Want } from "@/lib/types";
 
-// Колонок в сетке: 3 на телефоне, 4 на планшете (sm), 6 на компьютере (lg).
-// Нужно знать в коде: свёрнутая библиотека — это ровно два ряда.
+// Grid columns: 3 on phones, 4 on tablets (sm), 6 on desktop (lg).
+// The code needs to know this: the collapsed library is exactly two rows.
 const COLUMN_QUERIES = ["(min-width: 1024px)", "(min-width: 640px)"] as const;
 function subscribeColumns(onChange: () => void) {
   const lists = COLUMN_QUERIES.map((q) => window.matchMedia(q));
   lists.forEach((l) => l.addEventListener("change", onChange));
   return () => lists.forEach((l) => l.removeEventListener("change", onChange));
 }
-// Разворачивание: высота плавно меняется, а за край сетки ничего не вылезает
-// (снизу обрезаем, по бокам и сверху — нет, чтобы не резать белую рамку и тень обложек).
+// Expanding: the height changes smoothly and nothing spills past the grid
+// (clipped at the bottom only, not at the sides or top, so cover outlines and shadows aren't cut).
 const EASE = "cubic-bezier(0.32, 0.72, 0, 1)";
 const CLIP = "inset(-16px -16px 0 -16px)";
 const GAP_Y = 24; // gap-y-6
@@ -41,10 +41,10 @@ const reduceMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)")
 const columnsNow = () => (window.matchMedia(COLUMN_QUERIES[0]).matches ? 6 : window.matchMedia(COLUMN_QUERIES[1]).matches ? 4 : 3);
 
 /**
- * Общая библиотека. Нажатие на обложку ставит игру в твой статус на сутки.
- * Порядок у каждого свой: игры перетаскиваются (на телефоне — зажать обложку),
- * а выбранные почаще сами понемногу поднимаются (см. bumpGames).
- * Хотелки «живые» (меняются сразу при нажатии) и общие со всей главной — см. HomeLive.
+ * Shared library. Tapping a cover puts the game into your status for a day.
+ * Everyone has their own order: games can be dragged (long-press the cover on phones),
+ * and the ones you pick more often gradually move up by themselves (see bumpGames).
+ * Wants are live (they change instantly on tap) and shared across the home page; see HomeLive.
  */
 export function Library({
   games,
@@ -69,7 +69,7 @@ export function Library({
   const [, start] = useTransition();
   const columns = useSyncExternalStore(subscribeColumns, columnsNow, () => 3);
 
-  // Порядок с сервера уже твой; после перетаскивания показываем новый сразу, не дожидаясь ответа.
+  // The server already sends your order; after a drag the new order shows immediately, without waiting.
   const [orderIds, applyOrder] = useOptimistic(
     games.map((g) => g.id),
     (_: number[], next: number[]) => next,
@@ -81,13 +81,13 @@ export function Library({
   const shown = expanded ? order : order.slice(0, collapsedCount);
 
   const sensors = useSensors(
-    // Мышью — потянуть на несколько пикселей; пальцем — зажать, чтобы не мешать прокрутке.
+    // Mouse: drag a few pixels; finger: long-press, so scrolling isn't blocked.
     useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 280, tolerance: 8 } }),
   );
 
   const onDragEnd = ({ active, over }: DragEndEvent) => {
-    // Отпущенная после перетаскивания обложка не должна ещё и нажаться.
+    // A cover released after a drag must not also register as a tap.
     justDragged.current = true;
     setTimeout(() => (justDragged.current = false), 50);
     if (!over || active.id === over.id) return;
@@ -96,13 +96,13 @@ export function Library({
     haptic("select");
     start(async () => {
       applyOrder(next);
-      // Не сохранилось (нет сети) — порядок сам вернётся к прежнему, когда переход закончится.
+      // Not saved (no network): the order reverts by itself when the transition ends.
       await saveLibraryOrder(next).catch(() => undefined);
     });
   };
 
-  // Спрятанные под «Показать все» обложки грузим заранее, когда браузер свободен, —
-  // чтобы при разворачивании они появлялись уже готовыми, а не проявлялись по одной.
+  // Covers hidden under "Show all" are preloaded when the browser is idle,
+  // so on expand they appear ready instead of popping in one by one.
   const hiddenCovers = order.slice(collapsedCount).map((g) => gameArt(g).portrait[0]).filter(Boolean).join("|");
   useEffect(() => {
     if (!hiddenCovers) return;
@@ -116,9 +116,9 @@ export function Library({
   const shrinking = useRef<Animation | null>(null);
   const shrinkTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  // После разворачивания сетка уже полная: растим её высоту от прежней до новой.
+  // After expanding the grid is already full: animate its height from the old value to the new one.
   useLayoutEffect(() => {
-    shrinking.current?.cancel(); // свернули — держать высоту анимацией больше не нужно
+    shrinking.current?.cancel(); // collapsed: no need to hold the height with the animation anymore
     shrinking.current = null;
     clearTimeout(shrinkTimer.current);
     const el = box.current;
@@ -133,14 +133,14 @@ export function Library({
   }, [expanded]);
 
   const toggleExpanded = () => {
-    if (shrinking.current) return; // уже сворачивается
+    if (shrinking.current) return; // already collapsing
     const el = box.current;
     if (!expanded) {
       grownFrom.current = el?.offsetHeight ?? null;
       setExpanded(true);
       return;
     }
-    // Свернули, стоя внизу длинного списка, — возвращаемся к началу библиотеки.
+    // Collapsed while at the bottom of a long list: scroll back to the top of the library.
     const top = section.current;
     if (top && top.getBoundingClientRect().top < 0) top.scrollIntoView({ block: "start", behavior: "smooth" });
     const firstHidden = el?.querySelector<HTMLElement>(`[data-i="${collapsedCount}"]`);
@@ -148,7 +148,7 @@ export function Library({
       setExpanded(false);
       return;
     }
-    // Лишние обложки тают, сетка сжимается до двух рядов — и только потом они убираются.
+    // Extra covers fade out and the grid shrinks to two rows; only then are they removed.
     const target = firstHidden.getBoundingClientRect().top - el.getBoundingClientRect().top - GAP_Y;
     el.querySelectorAll<HTMLElement>("[data-i]").forEach((tile) => {
       if (Number(tile.dataset.i) >= collapsedCount) tile.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 220, fill: "forwards" });
@@ -160,7 +160,7 @@ export function Library({
     });
     shrinking.current = anim;
     anim.onfinish = () => setExpanded(false);
-    // Страховка: в фоновой вкладке браузер может не доиграть анимацию.
+    // Safety net: a background tab may never finish the animation.
     shrinkTimer.current = setTimeout(() => setExpanded(false), 700);
   };
 
@@ -223,7 +223,7 @@ export function Library({
                     key={g.id}
                     id={g.id}
                     index={i}
-                    // Открывшиеся при разворачивании — появляются волной, по порядку.
+                    // Covers revealed by expanding appear in a wave, in order.
                     reveal={expanded && i >= collapsedCount ? Math.min((i - collapsedCount) * 35, 420) : null}
                   >
                     <button
@@ -291,7 +291,7 @@ export function Library({
   );
 }
 
-/** Ячейка, которую можно перетаскивать. Поднятая — чуть крупнее и поверх остальных. */
+/** A draggable cell. While lifted it's slightly bigger and above the others. */
 function SortableTile({ id, index, reveal, children }: { id: number; index: number; reveal: number | null; children: ReactNode }) {
   const { setNodeRef, listeners, transform, transition, isDragging } = useSortable({ id });
   const style: CSSProperties = { transform: CSS.Translate.toString(transform), transition };

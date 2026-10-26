@@ -1,4 +1,4 @@
-// Выдуманная компания для предпросмотра дизайна. Только для разработки.
+// A made-up crew for design previews. Development only.
 import { addDays, gamingDay, hoursToSlots } from "@/lib/time";
 import type { CrewData } from "@/lib/views";
 import type { DayEntry, Game, Member, Want } from "@/lib/types";
@@ -26,7 +26,7 @@ export function mockCrew(variant: "full" | "empty" = "full"): CrewData {
     { id: 4, steam_appid: 1966720, name: "Lethal Company" },
     { id: 5, steam_appid: 553850, name: "HELLDIVERS 2" },
     { id: 6, steam_appid: null, name: "Minecraft" },
-    // Большая полка — как после синхронизации со Steam (проверка «Показать все»).
+    // A big shelf, as after a Steam sync (to test "Show all").
     { id: 7, steam_appid: 108600, name: "Project Zomboid" },
     { id: 8, steam_appid: 3241660, name: "R.E.P.O." },
     { id: 9, steam_appid: 105600, name: "Terraria" },

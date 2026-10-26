@@ -4,12 +4,12 @@ import { FriendTime } from "@/components/FriendTime";
 import { personalPhrase } from "@/lib/phrases";
 import type { HomeModel } from "@/lib/views";
 
-/** Друзья и игры, которые у них сейчас в статусе. */
+/** Friends and the games currently in their status. */
 export function StatusRow({ statuses, meId, viewerTz }: { statuses: HomeModel["statuses"]; meId: string; viewerTz: string }) {
   return (
     <section>
       <h2 className="mb-4 text-[22px] font-semibold tracking-tight">Статусы</h2>
-      {/* Сверху запас под подсказку со временем друга: прокрутка обрезала бы её. */}
+      {/* Top padding for the friend-time tooltip: scrolling would clip it otherwise. */}
       <div className="no-scrollbar -mx-4 -mt-16 flex gap-6 overflow-x-auto px-4 pt-16 pb-1 sm:-mx-8 sm:px-8">
         {statuses.map(({ member, games }) => (
           <FriendTime

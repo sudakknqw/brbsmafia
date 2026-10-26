@@ -8,9 +8,9 @@ import { haptic } from "@/lib/tg";
 import { cleanNote, isPhone, toRange, type Range, type Row } from "./timeScale";
 
 /**
- * Своё время на шкале дня: выбор начала и конца (на компьютере — двумя нажатиями,
- * на телефоне — на циферблате), «NO», выбранные игры, заметка и сохранение.
- * Всё меняется на экране сразу, а сохраняется в фоне.
+ * Your own time on the day timeline: picking start and end (two taps on desktop,
+ * the dial on phones), NO, chosen games, the note, and saving.
+ * Everything updates on screen immediately and is saved in the background.
  */
 export function useMyTime({
   day,
@@ -33,13 +33,13 @@ export function useMyTime({
   const [dialValue, setDialValue] = useState<Range>([12, 16]);
   const [picked, setPicked] = useState<number[]>(initialGames);
   const [popover, setPopover] = useState(false);
-  const [grown, setGrown] = useState(0); // перезапуск анимации полосы
-  // Заметка: что набрано в окне игр и что уже сохранено (её и видно на шкале).
+  const [grown, setGrown] = useState(0); // restarts the bar animation
+  // Note: what's typed in the game picker and what's already saved (the latter is shown on the timeline).
   const [note, setNote] = useState(mine.comment ?? "");
   const [savedNote, setSavedNote] = useState(mine.comment ?? "");
   const [, start] = useTransition();
 
-  // Сбой сети не должен ронять шкалу: время останется на экране, а данные подтянутся при обновлении.
+  // A network error must not break the timeline: the time stays on screen and data catches up on refresh.
   const run = (fn: () => Promise<void>) =>
     start(async () => {
       try {
@@ -52,17 +52,17 @@ export function useMyTime({
   const hoursOf = (r: Range) => Array.from({ length: r[1] - r[0] }, (_, i) => r[0] + i);
   const save = (r: Range, g: number[]) => run(() => saveDay(day, hoursOf(r), g));
 
-  /** Без времени заметки нет: строка дня удаляется или становится «NO». */
+  /** No note without time: the day row is deleted or becomes NO. */
   const dropNote = () => {
     setNote("");
     setSavedNote("");
   };
 
-  // Сколько остальных свободно в каждый час — для подсветки на циферблате.
+  // How many others are free each hour, for the dial highlight.
   const othersCounts = new Array<number>(DAY_HOURS).fill(0);
   others.forEach((r) => r.hours.forEach((h) => othersCounts[h]++));
 
-  /** Телефон: циферблат. Начинаем с моего времени, иначе — с общего окна остальных, иначе — от места касания. */
+  /** Phone: the dial. Start from my time, else from the others' common window, else from where the user tapped. */
   const openDial = (near?: number) => {
     const theirs = bestWindow(othersCounts);
     const start = near ?? 12;
@@ -99,7 +99,7 @@ export function useMyTime({
     setHover(null);
     setPopover(true);
     setGrown((n) => n + 1);
-    save(r, picked); // время сохраняется сразу, игры — по «Готово»
+    save(r, picked); // time is saved right away, games on "Done"
   };
 
   const remove = () => {
@@ -116,7 +116,7 @@ export function useMyTime({
       setRange(null);
       setPopover(false);
     }
-    // При «NO» строка дня остаётся — заметку к времени стираем, чтобы она не всплыла потом.
+    // On NO the day row stays, so clear the note to keep it from resurfacing later.
     const hadNote = !!savedNote;
     dropNote();
     run(async () => {
@@ -129,7 +129,7 @@ export function useMyTime({
   const togglePick = (id: number) =>
     setPicked((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : prev.length >= maxGames ? prev : [...prev, id]));
 
-  /** «Готово» в окне игр: закрыть и сохранить выбранные игры и заметку (после времени — строка дня уже есть). */
+  /** "Done" in the game picker: close and save the chosen games and the note (the day row already exists after the time). */
   const done = (r: Range) => {
     setPopover(false);
     const text = cleanNote(note);
@@ -142,7 +142,7 @@ export function useMyTime({
     });
   };
 
-  /** «Другое время»: на телефоне — снова циферблат, на компьютере — выбор заново с прежним началом. */
+  /** "Other time": the dial again on phones; on desktop, pick again keeping the old start. */
   const repick = (r: Range) => {
     if (isPhone()) return openDial();
     setPopover(false);
@@ -151,7 +151,7 @@ export function useMyTime({
     setRange(null);
   };
 
-  /** При уходе указателя с шкалы предпросмотр сжимается до начала. */
+  /** When the pointer leaves the timeline, the preview shrinks back to the start. */
   const hoverHour = (h: number) => anchor !== null && setHover(h);
 
   const preview: Range | null = anchor !== null ? [Math.min(anchor, hover ?? anchor), Math.max(anchor, hover ?? anchor) + 1] : null;

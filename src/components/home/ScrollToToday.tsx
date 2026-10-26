@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, type ReactNode } from "react";
 
-/** На узком экране неделя не влезает — сразу показываем сегодняшнюю плитку. */
+/** On narrow screens the week doesn't fit, so scroll today's tile into view. */
 export function ScrollToToday({ className, children }: { className?: string; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {

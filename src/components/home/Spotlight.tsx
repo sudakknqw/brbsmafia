@@ -22,7 +22,7 @@ type Props = {
   today: EditorSeed;
 };
 
-/** Первый экран: арт игры, которую сейчас хотят больше всего, и ближайшее окно. */
+/** Hero: art of the game people want most right now, plus the nearest window. */
 export function Spotlight({ me, spotlight, gathering, today }: Props) {
   const openDay = useOpenDay();
   const [busy, setBusyOptimistic] = useState(today.busy);
@@ -67,7 +67,7 @@ export function Spotlight({ me, spotlight, gathering, today }: Props) {
           )}
         </div>
 
-        {/* Идёт сбор — он главнее всего остального */}
+        {/* An active session outranks everything else */}
         {gathering ? (
           <div style={{ animationDelay: "0.32s" }}>
             <GatheringInfo key={gathering.id} gathering={gathering} meId={me.id} />
@@ -77,7 +77,7 @@ export function Spotlight({ me, spotlight, gathering, today }: Props) {
           </div>
         ) : (
           <>
-            {/* Когда и кто — одним блоком под логотипом */}
+            {/* When and who, in one block under the logo */}
             <div className="anim-rise" style={{ animationDelay: "0.32s" }}>
               <NamesHint names={spotlight.people.map((p) => p.name)} className="gap-3">
                 {spotlight.people.length > 0 && <AvatarStack people={spotlight.people} size={34} max={8} />}

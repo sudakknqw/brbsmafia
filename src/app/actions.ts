@@ -22,19 +22,19 @@ function changed() {
   after(() => syncDiscord().catch((e) => console.error(e)));
 }
 
-// Действия может вызвать любой участник с произвольным JSON: типы TypeScript тут ничего не гарантируют.
+// Any member can call an action with arbitrary JSON: TypeScript types guarantee nothing here.
 const isDay = (day: string) => typeof day === "string" && /^\d{4}-\d{2}-\d{2}$/.test(day);
 const isId = (id: unknown): id is number => Number.isSafeInteger(id) && (id as number) > 0;
 
-/** Часы игрового дня: только целые 0..23, без повторов, по порядку. */
+/** Hours of the gaming day: integers 0..23 only, unique, sorted. */
 const cleanHours = (hours: unknown): number[] =>
   Array.isArray(hours)
     ? [...new Set(hours.filter((h): h is number => Number.isInteger(h) && h >= 0 && h < DAY_HOURS))].sort((a, b) => a - b)
     : [];
 
 /**
- * Аватарка — только своя картинка из нашего хранилища, фото из Telegram или та, что уже стоит
- * (у старых аккаунтов может быть, например, ссылка Discord — её не ломаем).
+ * Avatar must be our own storage upload, a Telegram photo, or the one already set
+ * (older accounts may still have e.g. a Discord URL; we don't break those).
  */
 function avatarAllowed(url: unknown, current: string | null | undefined, userId: string) {
   if (url === null) return true;
@@ -55,8 +55,8 @@ async function touchRecent(supabase: Awaited<ReturnType<typeof member>>["supabas
 }
 
 /**
- * Выбранные игры поднимаются в твоём порядке на одно место:
- * то, что выбираешь чаще, постепенно всплывает наверх библиотеки.
+ * Picked games move up one place in your personal order,
+ * so whatever you choose often gradually floats to the top of the library.
  */
 async function bumpGames(supabase: Awaited<ReturnType<typeof member>>["supabase"], userId: string, gameIds: number[]) {
   if (!gameIds.length) return;
@@ -64,33 +64,33 @@ async function bumpGames(supabase: Awaited<ReturnType<typeof member>>["supabase"
     loadLibraryOrder(supabase, userId),
     loadGames(supabase).then((g) => withPlaytime(supabase, g)),
   ]);
-  if (!saved) return; // миграции 008 ещё нет — не затираем порядок наугад
+  if (!saved) return; // migration 008 not applied yet: don't overwrite the order with a guess
   const ids = personalOrder(games, saved).map((g) => g.id);
   for (const id of gameIds) {
     const i = ids.indexOf(id);
     if (i > 0) [ids[i - 1], ids[i]] = [ids[i], ids[i - 1]];
   }
-  // Ошибку записи (например, миграции 008 ещё нет) молча пропускаем.
+  // Write errors (e.g. migration 008 not applied yet) are ignored on purpose.
   await supabase.from("library_order").upsert({ user_id: userId, game_ids: ids, updated_at: new Date().toISOString() });
 }
 
-/** Свой порядок библиотеки после перетаскивания. */
+/** Saves the personal library order after a drag. */
 export async function saveLibraryOrder(ids: number[]) {
   const { supabase, userId } = await member();
   const clean = [...new Set(ids.map(Number).filter((n) => Number.isInteger(n) && n > 0))].slice(0, 1000);
-  // Ошибку записи (например, миграции 008 ещё нет) молча пропускаем: порядок просто не сохранится.
+  // Write errors (e.g. migration 008 not applied yet) are ignored: the order just isn't saved.
   await supabase.from("library_order").upsert({ user_id: userId, game_ids: clean, updated_at: new Date().toISOString() });
   revalidatePath("/", "layout");
 }
 
-// ——— Время ———
+// ——— Time ———
 
 export async function saveDay(day: string, hours: number[], gameIds: number[]) {
   if (!isDay(day)) return;
   const { supabase, userId, tz } = await member();
   const free = cleanHours(hours);
   const games = Array.isArray(gameIds) ? [...new Set(gameIds.filter(isId))].slice(0, MAX_DAY_GAMES) : [];
-  // Поднимаем только впервые выбранные на этот день: пересохранение тех же игр не считается.
+  // Only games picked for this day for the first time get bumped; re-saving the same picks doesn't count.
   const { data: before } = await supabase.from("day_entries").select("game_ids").eq("user_id", userId).eq("day", day).maybeSingle();
   const added = games.filter((id) => !(before?.game_ids ?? []).includes(id));
 
@@ -132,7 +132,7 @@ export async function clearDay(day: string) {
   changed();
 }
 
-// Часы игрового дня: 0 = 08:00, 11 = 19:00, 16 = 00:00.
+// Gaming-day hours: 0 = 08:00, 11 = 19:00, 16 = 00:00.
 const EVENING = [11, 12, 13, 14, 15]; // 19:00–00:00
 const WEEKEND_EVENING = [10, 11, 12, 13, 14, 15, 16]; // 18:00–01:00
 
@@ -147,7 +147,7 @@ export async function quickFill(kind: "today" | "tomorrow" | "weekend") {
     const days = Array.from({ length: 7 }, (_, i) => addDays(today, i)).filter((d) =>
       [0, 6].includes(weekdayIndex(d)),
     );
-    // В воскресенье «выходные» — только сегодня, а не следующая неделя.
+    // On Sunday the "weekend" is just today, not next week.
     const weekend = weekdayIndex(today) === 0 ? [today] : days.slice(0, 2);
     plan = weekend.map((day) => ({ day, hours: WEEKEND_EVENING }));
   }
@@ -177,24 +177,24 @@ export async function quickFill(kind: "today" | "tomorrow" | "weekend") {
 }
 
 /**
- * Короткая заметка к своему дню: «после 23 без микрофона». Пустая — убрать.
- * Только к уже отмеченному дню: без времени заметке не к чему относиться.
+ * A short note for your day, e.g. "no mic after 11pm". Empty removes it.
+ * Only for a day that is already marked: without time the note has nothing to refer to.
  */
 export async function setDayNote(day: string, note: string) {
   if (!isDay(day) || typeof note !== "string") return;
   const { supabase, userId } = await member();
-  // Пробелы и переносы — в один пробел; 80 символов, не разрывая эмодзи и прочие пары.
+  // Collapse whitespace; cap at 80 characters without splitting emoji or other surrogate pairs.
   const clean = [...note.replace(/\s+/g, " ").trim()].slice(0, 80).join("").trim();
   const { error } = await supabase
     .from("day_entries")
     .update({ note: clean || null })
     .eq("user_id", userId)
     .eq("day", day);
-  if (error) return; // миграции 010 ещё нет
+  if (error) return; // migration 010 not applied yet
   changed();
 }
 
-// ——— Игры ———
+// ——— Games ———
 
 export async function toggleWant(gameId: number) {
   if (!isId(gameId)) return;
@@ -211,7 +211,7 @@ export async function toggleWant(gameId: number) {
   if (active.some((r) => r.game_id === gameId)) {
     await supabase.from("wants").delete().eq("user_id", userId).eq("game_id", gameId);
   } else {
-    // Больше трёх нельзя: самая старая хотелка уступает место.
+    // No more than three: the oldest want makes room.
     const drop = [...expired, ...active.slice(0, Math.max(0, active.length - MAX_WANTS + 1)).map((r) => r.game_id)];
     if (drop.length) await supabase.from("wants").delete().eq("user_id", userId).in("game_id", drop);
     await supabase.from("wants").insert({ user_id: userId, game_id: gameId });
@@ -256,16 +256,16 @@ type ArtField = (typeof ART_FIELDS)[number];
 const artRoot = () => `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/games/`;
 
 /**
- * Своя картинка игры (или null — вернуть картинку из Steam). Только из нашего хранилища.
- * Прошлая своя картинка этой игры удаляется из хранилища — чтобы не копились.
+ * Custom game art (or null to fall back to Steam art). Only files from our storage.
+ * The previous custom image of this game is deleted from storage so they don't pile up.
  */
 export async function setGameArt(gameId: number, field: ArtField, url: string | null) {
   if (!isId(gameId)) return;
   const { supabase } = await member();
   if (!ART_FIELDS.includes(field)) return;
   const folder = `${artRoot()}${gameId}/`;
-  // Только файл прямо в папке этой игры (вида cover-1760000000000.webp): без «..» и вложенных путей,
-  // иначе через замену картинки можно было бы удалить чужую (удаление идёт служебным ключом).
+  // Only a file directly in this game's folder (like cover-1760000000000.webp): no ".." or nested paths,
+  // otherwise replacing art could delete another game's image (deletion uses the service key).
   if (url !== null && (typeof url !== "string" || !url.startsWith(folder) || !/^[a-z]+-\d+\.[a-z0-9]+$/.test(url.slice(folder.length)))) return;
 
   const { data: before } = await supabase.from("games").select(field).eq("id", gameId).maybeSingle<Record<ArtField, string | null>>();
@@ -273,22 +273,22 @@ export async function setGameArt(gameId: number, field: ArtField, url: string | 
   if (error) return;
 
   const old = before?.[field];
-  // Удаляем служебным ключом: правила хранилища не дают обычному входу удалять без права чтения списка.
-  // Путь проверен выше — это старая картинка именно этой игры.
+  // Delete with the service key: storage policies don't let a normal session delete without list access.
+  // The path was validated above: this is the old image of this very game.
   if (old && old !== url && old.startsWith(folder)) {
     await createAdminClient().storage.from("games").remove([old.slice(artRoot().length)]);
   }
   changed();
 }
 
-/** Убрать игру у всех — вместе с её папкой своих картинок. */
+/** Removes a game for everyone, together with its folder of custom art. */
 export async function deleteGame(gameId: number) {
   if (!isId(gameId)) return;
   const { supabase } = await member();
   const { data: game } = await supabase.from("games").select("steam_appid").eq("id", gameId).maybeSingle();
   const { error } = await supabase.from("games").delete().eq("id", gameId);
   if (error) return;
-  // Удалённую игру Steam не добавляем обратно автоматически.
+  // A deleted Steam game is not re-added automatically.
   if (game?.steam_appid) await dismissSteamGame(game.steam_appid);
   const bucket = createAdminClient().storage.from("games");
   const { data: files } = await bucket.list(String(gameId));
@@ -296,11 +296,11 @@ export async function deleteGame(gameId: number) {
   changed();
 }
 
-// ——— Сборы пати ———
+// ——— Sessions ———
 
 /**
- * Собрать пати одним нажатием: на лучшее окно дня и выбранную игру.
- * В Discord уходит сообщение с упоминанием всех, кто свободен в это окно.
+ * Starts a session in one tap: on the day's best window with the chosen game.
+ * Posts a Discord message mentioning everyone who is free in that window.
  */
 export async function startGathering(day: string, gameId: number): Promise<{ error: string | null }> {
   if (!isDay(day)) return { error: "Неверный день" };
@@ -316,7 +316,7 @@ export async function startGathering(day: string, gameId: number): Promise<{ err
   const { best, freeHours } = dayStats(day, tz, members, entries);
   if (!best) return { error: "Пока никто не совпал по времени" };
 
-  // Один сбор на окно: если кто-то уже собирает на это же время — не дублируем.
+  // One session per window: if someone already started one for this time, don't duplicate it.
   const startsAt = hourStart(day, best.from, tz);
   const endsAt = hourStart(day, best.to, tz);
   const { data: overlapping } = await supabase
@@ -331,7 +331,7 @@ export async function startGathering(day: string, gameId: number): Promise<{ err
   const { data: created, error } = await supabase
     .from("gatherings")
     .insert({
-      // Окно считали по твоим часам, но день сессии — по часам компании, как и из кнопки в Telegram.
+      // The window is computed in your time zone, but the session day uses the crew time zone, same as the Telegram button.
       day: gamingDay(startsAt, crewTimezone()),
       starts_at: startsAt.toISOString(),
       ends_at: endsAt.toISOString(),
@@ -342,7 +342,7 @@ export async function startGathering(day: string, gameId: number): Promise<{ err
     .select("id")
     .single();
   if (error) {
-    // day уникален: на этот игровой день компании уже есть сбор (другое окно).
+    // day is unique: the crew already has a session on this gaming day (another window).
     return { error: error.code === "23505" ? "На этот день уже есть сессия" : "Не получилось начать сессию. Попробуй ещё раз." };
   }
 
@@ -353,7 +353,7 @@ export async function startGathering(day: string, gameId: number): Promise<{ err
   return { error: null };
 }
 
-/** «В деле», «Не пойду» или снять отметку (null). */
+/** "In", "Out", or clear the answer (null). */
 export async function setGatheringStatus(gatheringId: number, status: "in" | "out" | null) {
   if (!isId(gatheringId) || (status !== "in" && status !== "out" && status !== null)) return;
   const { supabase, userId } = await member();
@@ -368,7 +368,7 @@ export async function setGatheringStatus(gatheringId: number, status: "in" | "ou
   after(() => syncGatheringMessage(gatheringId).catch((e) => console.error(e)));
 }
 
-/** Отменить может только тот, кто собирал. */
+/** Only the person who started a session can cancel it. */
 export async function cancelGathering(gatheringId: number) {
   if (!isId(gatheringId)) return;
   const { supabase, userId } = await member();
@@ -384,7 +384,7 @@ export async function cancelGathering(gatheringId: number) {
   after(() => deleteGatheringMessage(data.discord_message_id).catch((e) => console.error(e)));
 }
 
-// ——— Профиль и приглашения ———
+// ——— Profile ———
 
 export async function updateProfile(input: { name: string; avatarUrl?: string | null }) {
   const viewer = await getViewer();
@@ -403,7 +403,7 @@ export async function updateProfile(input: { name: string; avatarUrl?: string | 
   return { error: null };
 }
 
-/** Ссылка на свой профиль Steam: по ней узнаём, во что компания чаще играет. */
+/** Link to your Steam profile: used to learn what the crew plays most. */
 export async function setSteamProfile(link: string): Promise<{ error: string | null; warning?: string }> {
   const { userId } = await member();
   if (!steamConfigured()) return { error: "Steam ещё не подключён к сайту" };
@@ -414,8 +414,8 @@ export async function setSteamProfile(link: string): Promise<{ error: string | n
   if (error) return { error: "Не получилось сохранить. Попробуй ещё раз" };
   const sync = await syncSteamPlaytime(userId, steamId);
   revalidatePath("/", "layout");
-  // Общие с компанией игры добавляются в фоне: проверка в магазине Steam занимает время.
-  // Открытые страницы подхватят их сами (LiveSync следит за таблицей игр).
+  // Games shared with the crew are added in the background: checking the Steam store takes a while.
+  // Open pages pick them up by themselves (LiveSync listens to the games table).
   if (sync === "ok") after(() => addSharedGames().catch((e) => console.error(e)));
   if (sync === "private")
     return { error: null, warning: "Профиль сохранён, но игры в нём скрыты. В Steam: Профиль → Редактировать → Приватность → «Игровая информация»: Открытая" };

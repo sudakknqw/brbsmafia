@@ -5,13 +5,13 @@ import { Avatar } from "@/components/Avatar";
 import type { Member } from "@/lib/types";
 import { choreography, entranceLength, type Frame } from "./choreography";
 
-// Живёт, пока открыта вкладка: при перезагрузке страницы модуль загружается заново
-// и экран показывается снова, а при переходах внутри сайта — нет.
+// Lives as long as the tab: a page reload loads the module again
+// and the screen shows again, but in-app navigation doesn't.
 let playedThisLoad = false;
 const EASE = "cubic-bezier(0.2, 0.8, 0.2, 1)";
-const START = 260; // пауза перед выходом участников
-const HOLD = 520; // все собрались — короткая пауза
-const OUT = 540; // финал: собираются в букву и экран растворяется
+const START = 260; // pause before the members enter
+const HOLD = 520; // everyone is in: short pause
+const OUT = 540; // finale: they merge into the letter and the screen dissolves
 const AVATAR = 64;
 
 const keyframe = (f: Frame): Keyframe => ({
@@ -21,13 +21,13 @@ const keyframe = (f: Frame): Keyframe => ({
 });
 
 /**
- * Экран загрузки «сбор пати»: аватарки участников слетаются к букве B —
- * по своей постановке для каждого числа людей (1–8). Показывается при каждом
- * открытии сайта и перезагрузке страницы, но не при переходах внутри сайта.
+ * "Party gathering" splash screen: member avatars fly in towards the letter B,
+ * with a choreography for each crew size (1–8). Shown on every
+ * site open and page reload, but not on in-app navigation.
  */
 export function Splash({ members, demo = false, freezeAt }: { members: Member[]; demo?: boolean; freezeAt?: number }) {
   const [done, setDone] = useState(false);
-  const [round, setRound] = useState(0); // в демо — повтор по кругу
+  const [round, setRound] = useState(0); // in demo mode: loop
   const root = useRef<HTMLDivElement>(null);
   const crew = members.slice(0, 8);
 
@@ -37,7 +37,7 @@ export function Splash({ members, demo = false, freezeAt }: { members: Member[];
     const finish = () => {
       if (demo) return setRound((r) => r + 1);
       playedThisLoad = true;
-      // Для заглушки загрузки (app/loading.tsx): дальше в этой вкладке — обычный скелет, без буквы.
+      // For the loading placeholder (app/loading.tsx): later in this tab, the regular skeleton without the letter.
       document.documentElement.dataset.splashSeen = "1";
       setDone(true);
     };
@@ -54,7 +54,7 @@ export function Splash({ members, demo = false, freezeAt }: { members: Member[];
     const letter = el.querySelector<HTMLElement>("[data-letter]")!;
     const animations: Animation[] = [];
 
-    // «Уменьшить движение» в системе: компания сразу стоит на местах, экран просто гаснет.
+    // "Reduce motion" in the OS: the crew is already in place and the screen just fades.
     if (reduce) {
       avatars.forEach((a, i) => {
         const last = moves[i]?.frames.at(-1);
@@ -75,7 +75,7 @@ export function Splash({ members, demo = false, freezeAt }: { members: Member[];
     });
 
     const gathered = START + entranceLength(moves);
-    // Все на месте — буква отвечает коротким толчком.
+    // Everyone is in place: the letter answers with a short bump.
     animations.push(
       letter.animate([{ transform: "scale(1)" }, { transform: "scale(1.14)" }, { transform: "scale(1)" }], {
         duration: 460,
@@ -84,7 +84,7 @@ export function Splash({ members, demo = false, freezeAt }: { members: Member[];
       }),
     );
 
-    // Предпросмотр: стоп-кадр на заданной миллисекунде, без финала.
+    // Preview: freeze frame at the given millisecond, no finale.
     if (freezeAt !== undefined) {
       animations.forEach((a) => {
         a.pause();
@@ -120,7 +120,7 @@ export function Splash({ members, demo = false, freezeAt }: { members: Member[];
       timers.forEach(clearTimeout);
       animations.forEach((a) => a.cancel());
     };
-    // Постановка выбирается один раз при открытии (в демо — на каждый круг).
+    // The choreography is chosen once on open (in demo mode, on every loop).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [round]);
 
@@ -132,7 +132,7 @@ export function Splash({ members, demo = false, freezeAt }: { members: Member[];
       className={`${demo ? "" : "splash"} fixed inset-0 z-[60] flex items-center justify-center bg-ink`}
       aria-hidden="true"
     >
-      {/* На узком экране сцена чуть ужимается, чтобы корона и орбита не вылезали за края. */}
+      {/* On narrow screens the stage shrinks a little so the crown and orbit stay inside. */}
       <div className="relative size-0 max-[480px]:scale-[0.8]">
         {crew.map((m) => (
           <div key={m.id} data-member className="absolute opacity-0" style={{ top: -AVATAR / 2, left: -AVATAR / 2 }}>
@@ -145,7 +145,7 @@ export function Splash({ members, demo = false, freezeAt }: { members: Member[];
   );
 }
 
-/** Буква B в круге — общая для экрана загрузки и заглушки, пока грузятся данные. */
+/** The B-in-a-circle mark, shared by the splash screen and the loading placeholder. */
 export function SplashLetter() {
   return (
     // eslint-disable-next-line @next/next/no-img-element

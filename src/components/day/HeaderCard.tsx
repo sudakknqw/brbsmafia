@@ -4,7 +4,7 @@ import { useState } from "react";
 import { gameArt, plateColor } from "@/lib/steam";
 import type { Game } from "@/lib/types";
 
-/** Горизонтальная шапка игры: своя, из Steam или цветная плашка. */
+/** Wide game header: custom, from Steam, or a colored plate. */
 export function HeaderCard({ game }: { game: Game }) {
   const sources = gameArt(game).header;
   const key = sources.join("|");

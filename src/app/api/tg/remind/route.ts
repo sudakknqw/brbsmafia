@@ -13,25 +13,25 @@ type Reminder = {
   start: Date;
   game: string;
   people: Person[];
-  /** Данные для кнопок «Иду» / «Без меня» (разбирает /api/tg/webhook). */
+  /** Payload for the Going / Skip buttons (parsed by /api/tg/webhook). */
   answer: { in: string; out: string };
-  /** Уже отмечены «в деле» — у них сразу стоит галочка. */
+  /** Already marked as going, so their button starts checked. */
   marked: boolean;
 };
 
-// Вечерний пинок: в это время по часам человека, если он ещё не отметил день.
+// Evening nudge: sent at this local hour if the person hasn't marked the day yet.
 const NUDGE_HOUR = 18;
 
 const HOUR = 3600_000;
 
 /**
- * Напоминание за час: вызывается планировщиком Supabase каждые 10 минут.
- * Если в ближайший час начинается сессия (или общее окно, если сессии нет),
- * каждому, кто идёт, бот пишет «<b>Игра</b> в 21:00 / ник, ник, ник» — по его часам.
- * Под сообщением — «Иду» / «Без меня»: ответить можно, не открывая приложение.
+ * One-hour reminder, called by the Supabase scheduler every 10 minutes.
+ * If a session (or a common window without a session) starts within the hour,
+ * the bot messages everyone going: "<b>Game</b> at 21:00 / name, name, name" in their own time zone.
+ * Going / Skip buttons under the message let people answer without opening the app.
  *
- * Там же — вечерний пинок: кто к 18:00 по своим часам не отметил сегодняшний день
- * (а кто-то из компании уже отметил), получает одно личное сообщение.
+ * Also the evening nudge: whoever hasn't marked today by 18:00 local time
+ * (while someone else in the crew has) gets one private message.
  */
 export async function GET(request: NextRequest) {
   const secret = process.env.CRON_SECRET;
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
 
   const reminders: Reminder[] = [];
 
-  // Сессии: идут те, кто нажал «Я в деле».
+  // Sessions: whoever answered "In" is going.
   for (const g of gatherings) {
     const going = g.members.filter((m) => m.status === "in").map((m) => people.find((p) => p.id === m.user_id));
     reminders.push({
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  // Общее окно без сессии: идут все, кто свободен в его начале.
+  // Common window without a session: everyone free at its start is going.
   for (const day of [today, addDays(today, 1)]) {
     const { best, freeHours } = dayStats(day, tz, people, entries);
     if (!best) continue;
@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
     if (covered) continue;
 
     const going = people.filter((p) => (freeHours.get(p.id) ?? []).includes(best.from));
-    // Игра: чаще всего выбранная на этот день среди идущих, потом — по статусам «хочу сейчас».
+    // Game: the one most picked for this day among those going, then by "want now" statuses.
     const score = new Map<number, number>();
     for (const p of going) entryFor(entries, p.id, day)?.game_ids.forEach((id) => score.set(id, (score.get(id) ?? 0) + 2));
     for (const w of wants) if (going.some((p) => p.id === w.user_id)) score.set(w.game_id, (score.get(w.game_id) ?? 0) + 1);
@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
   let sent = 0;
   for (const r of reminders) {
     if (!r.people.length) continue;
-    // Сначала помечаем как отправленное: если планировщик сработает дважды, второй раз ничего не уйдёт.
+    // Mark as sent first: if the scheduler fires twice, the second run sends nothing.
     const { error } = await db.from("reminders_sent").insert({ key: r.key });
     if (error) continue;
 
@@ -130,7 +130,7 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Пинок молчунам: один раз за день, только лично.
+  // Nudge the silent ones: once a day, privately only.
   let nudged = 0;
   for (const p of people) {
     if (!p.telegram_id) continue;
@@ -139,7 +139,7 @@ export async function GET(request: NextRequest) {
     const day = gamingDay(now, p.timezone);
     if (entryFor(entries, p.id, day)) continue;
     const marked = people.filter((o) => o.id !== p.id && entryFor(entries, o.id, day)?.status === "free");
-    if (!marked.length) continue; // никто не планирует — и пинать незачем
+    if (!marked.length) continue; // nobody is planning anything, so there's no point nudging
 
     const { error } = await db.from("reminders_sent").insert({ key: `nudge:${p.id}:${day}` });
     if (error) continue;

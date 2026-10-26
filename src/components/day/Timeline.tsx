@@ -25,14 +25,14 @@ type Props = {
   games: Game[];
   recent: Game[];
   maxGames: number;
-  /** Подсказка «нажми в своей строке» сразу при открытии. */
+  /** Show the "tap your row" hint right away when opened. */
   invite?: boolean;
   viewerTz: string;
 };
 
 /**
- * Шкала дня. В своей строке время отмечается прямо здесь: нажал начало,
- * нажал конец — появляется окно с выбором игр. Общее окно пересчитывается сразу.
+ * Day timeline. You mark time right in your own row: tap the start,
+ * tap the end, and the game picker appears. The common window updates immediately.
  */
 export function Timeline({ day, hourLabels, rows, meId, initialGames, games, recent, maxGames, invite, viewerTz }: Props) {
   const mine = rows.find((r) => r.member.id === meId)!;
@@ -47,7 +47,7 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
     if (invite) myRow.current?.scrollIntoView({ block: "center", behavior: "smooth" });
   }, [invite]);
 
-  // Общее окно — с учётом моего ещё не сохранённого времени.
+  // Common window, including my not-yet-saved time.
   const counts = new Array<number>(DAY_HOURS).fill(0);
   others.forEach((r) => r.hours.forEach((h) => counts[h]++));
   if (range) for (let h = range[0]; h < range[1]; h++) counts[h]++;
@@ -59,7 +59,7 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
       ]
     : [];
 
-  // Сначала недавно выбранные тобой, дальше — в твоём порядке из библиотеки.
+  // Your recent picks first, then your personal library order.
   const choices = [...recent, ...games.filter((g) => !recent.some((r) => r.id === g.id))];
 
   const hint = range
@@ -69,7 +69,7 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
       : busy
         ? "На этот день у тебя NO. Нажми на шкалу, если планы поменялись"
         : "Нажми в своей строке, с какого часа ты свободен";
-  // На телефоне время выбирается на циферблате — подсказка другая.
+  // On phones time is picked on the dial, so the hint is different.
   const phoneHint = !range && anchor === null && !busy ? "Нажми на свою строку, чтобы отметить время" : null;
 
   return (
@@ -98,9 +98,9 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
       </div>
 
       <div className="relative grid grid-cols-[104px_minmax(0,1fr)] gap-x-3 sm:grid-cols-[150px_minmax(0,1fr)] sm:gap-x-5">
-        {/* Ось часов */}
+        {/* Hour axis */}
         <div />
-        {/* Подписи — просто часы («18»): на компьютере каждый час, на телефоне — каждые три (иначе слипаются). */}
+        {/* Labels are plain hours ("18"): every hour on desktop, every third on phones (otherwise they collide). */}
         <div className="relative mb-3 h-4 text-[11px] text-faint tabular-nums sm:text-[12px]">
           {hourLabels.map((label, i) => (
             <span key={i} className={`absolute -translate-x-1/2 ${i % 3 ? "hidden sm:block" : ""}`} style={{ left: pct(i) }}>
@@ -125,10 +125,10 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
           onHover={t.hoverHour}
         />
 
-        {/* Остальные */}
+        {/* Everyone else */}
         <FriendRows day={day} rows={others} hourLabels={hourLabels} viewerTz={viewerTz} />
 
-        {/* Общее окно поверх всех строк */}
+        {/* Common window over all rows */}
         {best && (
           <div className="pointer-events-none absolute top-7 bottom-0 left-[116px] right-0 sm:left-[170px]" aria-hidden="true">
             <div
@@ -138,7 +138,7 @@ export function Timeline({ day, hourLabels, rows, meId, initialGames, games, rec
           </div>
         )}
 
-        {/* Окно выбора игр под моей полосой */}
+        {/* Game picker under my bar */}
         <GamesPopover
           open={t.popover}
           range={range}

@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setSteamProfile } from "@/app/actions";
 
-/** Поле для ссылки на профиль Steam. onSaved — после удачного сохранения. */
+/** Field for the Steam profile link. onSaved runs after a successful save. */
 export function SteamLinkForm({ initial = "", onSaved }: { initial?: string; onSaved?: () => void }) {
   const router = useRouter();
   const [link, setLink] = useState(initial);

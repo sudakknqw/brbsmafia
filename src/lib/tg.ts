@@ -1,5 +1,5 @@
-// Мини-приложение Telegram: доступ к window.Telegram.WebApp из браузера.
-// Скрипт telegram-web-app.js подключён в app/layout.tsx.
+// Telegram Mini App: access to window.Telegram.WebApp in the browser.
+// The telegram-web-app.js script is included in app/layout.tsx.
 
 type WebApp = {
   initData: string;
@@ -29,14 +29,14 @@ declare global {
   }
 }
 
-/** WebApp, если сайт открыт внутри Telegram (есть подписанные данные), иначе null. */
+/** WebApp if the site is open inside Telegram (signed data present), otherwise null. */
 export function telegram(): WebApp | null {
   if (typeof window === "undefined") return null;
   const app = window.Telegram?.WebApp;
   return app && app.initData ? app : null;
 }
 
-/** Лёгкая вибрация на нажатие — только в Telegram, в браузере ничего не делает. */
+/** A light haptic tap: only in Telegram, a no-op in a browser. */
 export function haptic(kind: "tap" | "select" | "success" = "tap") {
   const h = telegram()?.HapticFeedback;
   if (!h) return;

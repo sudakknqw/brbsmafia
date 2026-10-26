@@ -1,6 +1,6 @@
 "use client";
 
-/** Кнопка в шапке дня: прокручивает к своей строке на шкале. */
+/** Button in the day header: scrolls to your own row on the timeline. */
 export function JumpToMine({ marked }: { marked: boolean }) {
   return (
     <button

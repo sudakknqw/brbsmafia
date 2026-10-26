@@ -9,20 +9,20 @@ import { haptic, telegram } from "@/lib/tg";
 type OpenDay = (day: string, origin: HTMLElement | null, invite?: boolean) => void;
 const DayOverlayContext = createContext<OpenDay | null>(null);
 
-/** Открыть день поверх главной, раскрыв его из элемента origin. */
+/** Opens a day over the home page, expanding it from the origin element. */
 export function useOpenDay() {
   return useContext(DayOverlayContext);
 }
 
-// Плавное торможение без «зависания» в конце, как у раскрытия карточек в iOS.
+// Smooth deceleration without a "hang" at the end, like iOS card expansion.
 const EASE = "cubic-bezier(0.32, 0.72, 0, 1)";
 const FULL = "translate(0px, 0px) scale(1, 1)";
 const reduceMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /**
- * Панель, ужатая точно в прямоугольник плитки (transform от левого верхнего угла).
- * Раньше это был clip-path, но на iPhone он перерисовывал весь экран на каждом кадре
- * и раскрытие дёргалось; transform двигает видеокарта, без перерисовки.
+ * The panel scaled exactly into the tile's rectangle (transform from the top-left corner).
+ * This used to be clip-path, but on iPhone it repainted the whole screen every frame
+ * and the expansion stuttered; transform runs on the GPU without repainting.
  */
 function tileTransform(el: HTMLElement | null) {
   const w = window.innerWidth;
@@ -32,15 +32,15 @@ function tileTransform(el: HTMLElement | null) {
 }
 
 /**
- * Раскрывающийся день: плитка растягивается на весь экран (transform),
- * а при закрытии сворачивается обратно в неё. Адрес не меняется, но в истории
- * появляется шаг — «Назад» в браузере или на телефоне закрывает день.
+ * Expanding day: the tile grows to full screen (transform)
+ * and collapses back into it on close. The URL doesn't change, but a history
+ * entry is pushed, so Back in the browser or on the phone closes the day.
  */
 export function DayOverlayProvider({ data, children }: { data: CrewData; children: ReactNode }) {
   const [day, setDay] = useState<string | null>(null);
   const [invite, setInvite] = useState(false);
-  const [openSeq, setOpenSeq] = useState(0); // растёт при каждом открытии — запускает раскрытие
-  const [dir, setDir] = useState<1 | -1 | 0>(0); // куда листали дни: для анимации сдвига
+  const [openSeq, setOpenSeq] = useState(0); // increments on every open and triggers the expansion
+  const [dir, setDir] = useState<1 | -1 | 0>(0); // paging direction, for the slide animation
   const panel = useRef<HTMLDivElement>(null);
   const origin = useRef<HTMLElement | null>(null);
   const closing = useRef(false);
@@ -59,9 +59,9 @@ export function DayOverlayProvider({ data, children }: { data: CrewData; childre
       origin.current?.focus({ preventScroll: true });
     };
     if (reduceMotion()) return done();
-    // Плитка могла уехать за край ряда недели (на телефоне он листается вбок).
+    // The tile may have scrolled out of the week row (it scrolls sideways on phones).
     origin.current?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "instant" });
-    // Содержимое уходит, панель сворачивается в плитку и в самом конце растворяется в ней.
+    // Content fades out, the panel shrinks into the tile and dissolves into it at the very end.
     el.firstElementChild?.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 180, fill: "forwards" });
     el.animate([{ opacity: 1 }, { opacity: 1, offset: 0.6 }, { opacity: 0 }], { duration: 480, fill: "forwards" });
     el.animate([{ transform: FULL }, { transform: tileTransform(origin.current) }], {
@@ -69,14 +69,14 @@ export function DayOverlayProvider({ data, children }: { data: CrewData; childre
       easing: EASE,
       fill: "forwards",
     }).onfinish = done;
-    // Страховка: в фоновой вкладке браузер может не доиграть анимацию.
+    // Safety net: a background tab may never finish the animation.
     setTimeout(done, 700);
   }, []);
 
   const close = useCallback(() => {
     if (pushed.current) {
       pushed.current = false;
-      history.back(); // popstate ниже запустит анимацию
+      history.back(); // the popstate handler below runs the animation
     } else animateClose();
   }, [animateClose]);
 
@@ -86,20 +86,20 @@ export function DayOverlayProvider({ data, children }: { data: CrewData; childre
     setDir(0);
     setDay(d);
     setOpenSeq((n) => n + 1);
-    // Адрес не меняем: только запись в истории, чтобы «Назад» закрывал день.
+    // Keep the URL: only a history entry, so that Back closes the day.
     history.pushState({ ...history.state, brbsDay: d }, "", location.href);
     pushed.current = true;
   }, []);
 
-  // Раскрытие — до первой отрисовки панели (useLayoutEffect): иначе она на кадр
-  // показывалась на весь экран и только потом начинала расти из плитки.
+  // Expand before the panel's first paint (useLayoutEffect); otherwise it showed full screen
+  // for one frame before starting to grow from the tile.
   useLayoutEffect(() => {
     const el = panel.current;
     if (!openSeq || !el) return;
     el.scrollTop = 0;
     if (reduceMotion()) return;
-    // Панель вырастает из плитки (сама по себе она просто тёмный фон — её растяжение не видно),
-    // а содержимое проявляется, когда панель уже почти раскрылась, и чуть «подъезжает» навстречу.
+    // The panel grows from the tile (it's just a dark background, so the stretch is invisible),
+    // and the content fades in when the panel is almost open, sliding in slightly.
     el.animate([{ transform: tileTransform(origin.current) }, { transform: FULL }], { duration: 680, easing: EASE });
     el.animate([{ opacity: 0 }, { opacity: 1, offset: 0.22 }, { opacity: 1 }], { duration: 680 });
     el.firstElementChild?.animate(
@@ -112,7 +112,7 @@ export function DayOverlayProvider({ data, children }: { data: CrewData; childre
     );
   }, [openSeq]);
 
-  // Соседние дни — в пределах текущей недели (её данные уже загружены главной).
+  // Neighbouring days stay within the current week (its data is already loaded by the home page).
   const monday = weekStart(data.today);
   const inWeek = (d: string) => d >= monday && d <= addDays(monday, 6);
   const prevDay = day && inWeek(addDays(day, -1)) ? addDays(day, -1) : null;
@@ -120,7 +120,7 @@ export function DayOverlayProvider({ data, children }: { data: CrewData; childre
   const go = useCallback((d: string | null, to: 1 | -1) => {
     if (!d) return;
     haptic("select");
-    // Закрываться теперь нужно в плитку этого дня, а не в ту, из которой открывали.
+    // Now we must close into this day's tile, not the one we opened from.
     origin.current = document.querySelector<HTMLElement>(`a.tile[href="/day/${d}"]`) ?? origin.current;
     setDir(to);
     setInvite(false);
@@ -128,7 +128,7 @@ export function DayOverlayProvider({ data, children }: { data: CrewData; childre
     panel.current?.scrollTo({ top: 0 });
   }, []);
 
-  // В Telegram у дня — системная кнопка «Назад» в шапке приложения.
+  // Inside Telegram the day uses the native Back button in the app header.
   useEffect(() => {
     const app = telegram();
     if (!app || !day) return;
@@ -140,7 +140,7 @@ export function DayOverlayProvider({ data, children }: { data: CrewData; childre
     };
   }, [day, close]);
 
-  // Ссылка из напоминания (/?day=2026-10-10) сразу открывает этот день.
+  // A link from a reminder (/?day=2026-10-10) opens that day right away.
   useEffect(() => {
     const url = new URL(window.location.href);
     const wanted = url.searchParams.get("day");
@@ -151,7 +151,7 @@ export function DayOverlayProvider({ data, children }: { data: CrewData; childre
     return () => clearTimeout(timer);
   }, [open]);
 
-  // Кнопка «Назад»: закрываем с анимацией.
+  // Back button: close with the animation.
   useEffect(() => {
     const onPop = () => {
       pushed.current = false;
@@ -161,13 +161,13 @@ export function DayOverlayProvider({ data, children }: { data: CrewData; childre
     return () => window.removeEventListener("popstate", onPop);
   }, [animateClose]);
 
-  // Пока день открыт, главная под ним не прокручивается; Esc закрывает.
+  // While the day is open the home page underneath doesn't scroll; Esc closes it.
   useEffect(() => {
     if (!day) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const onKey = (e: KeyboardEvent) => {
-      if (document.querySelector('[role="dialog"][aria-modal="true"]:not([data-day])')) return; // открыта шторка
+      if (document.querySelector('[role="dialog"][aria-modal="true"]:not([data-day])')) return; // a sheet is open
       if (e.key === "Escape") close();
       if (e.key === "ArrowLeft") go(prevDay, -1);
       if (e.key === "ArrowRight") go(nextDay, 1);

@@ -3,13 +3,13 @@ import { notFound } from "next/navigation";
 import { Splash } from "@/components/splash/Splash";
 import { mockCrew } from "../mock";
 
-// Экран загрузки по кругу: /preview/splash?n=1 … n=8, стоп-кадр — &t=900.
-// В продакшене страницы нет.
+// Splash screen on a loop: /preview/splash?n=1 … n=8, freeze frame with &t=900.
+// Not available in production.
 export default async function SplashPreview({ searchParams }: PageProps<"/preview/splash">) {
   if (process.env.NODE_ENV === "production") notFound();
   const params = await searchParams;
   const n = Math.min(8, Math.max(1, Number(params.n) || 8));
-  const t = params.t !== undefined ? Number(params.t) : undefined; // стоп-кадр, мс
+  const t = params.t !== undefined ? Number(params.t) : undefined; // freeze frame, ms
   const members = mockCrew().members.slice(0, n);
   return (
     <>

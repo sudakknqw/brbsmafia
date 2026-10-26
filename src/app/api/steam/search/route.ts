@@ -4,7 +4,7 @@ import { getViewer } from "@/lib/crew";
 type SteamItem = { id: number; name: string; type: string };
 type Found = { appid: number; name: string };
 
-// Номер игры или ссылка на её страницу в магазине: 1547000, store.steampowered.com/app/1547000/...
+// A game ID or a link to its store page: 1547000, store.steampowered.com/app/1547000/...
 async function byAppId(term: string): Promise<Found[] | null> {
   const id = term.match(/\/app\/(\d+)/)?.[1] ?? term.match(/^\d+$/)?.[0];
   if (!id) return null;
@@ -16,8 +16,8 @@ async function byAppId(term: string): Promise<Found[] | null> {
   return app?.success && app.data ? [{ appid: app.data.steam_appid, name: app.data.name }] : [];
 }
 
-// Поиск по магазину Steam. Браузер напрямую туда не пустит, поэтому через нас.
-// Регион — США: в российском Steam часть игр скрыта (например, всё от Rockstar).
+// Steam store search. The browser can't call it directly (CORS), so it goes through us.
+// US region: the Russian Steam store hides some games (e.g. everything from Rockstar).
 export async function GET(request: NextRequest) {
   const viewer = await getViewer();
   if (!viewer.isMember) return NextResponse.json({ items: [] }, { status: 401 });
